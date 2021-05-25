@@ -70,7 +70,7 @@ class BaseHuaWei(BaseClient):
         _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
         cookies = json.dumps(cookies)
         data = {'name': _id, 'credit': credit, 'address_id': address_id, 'cookies': cookies, 'uid': _uid}
-        requests.post(f'{self.api}/huawei/update', json=data)
+        requests.post(f'{self.api}/huawei/save', json=data)
 
     async def start(self):
         if self.page.url != self.url:
