@@ -21,7 +21,9 @@ name_map = {
     '流水线': [['week_new_pipeline', 0], ['pipeline_task', 1]],
     '接口测试': [['week_new_api_test_task', 0], ['api_test_task', 1]],
     '测试管理': [['new_test_task', 0]],
-    'APIG网关': [['new_new_api_task', 0], ['run_api_task', 1]],
+    'APIG网关': [
+        # ['new_new_api_task', 0],
+        ['run_api_task', 1]],
     '函数工作流': [['new_fun_task', 0]],
     '使用API  Explorer完在线调试': 'api_explorer_task',
     '使用API Explorer在线调试': 'api2_explorer_task',
@@ -357,6 +359,17 @@ class BaseHuaWei(BaseClient):
             await self.task_page.click(f'#{task_id}')
         await asyncio.sleep(5)
 
+    async def run_test_task(self):
+        await asyncio.sleep(5)
+        try:
+            await self.task_page.click('#global-guidelines .icon-close')
+        except Exception as e:
+            self.logger.debug(e)
+
+        await self.task_page.waitForSelector('div.devui-table-view', {'visible': True})
+        await self.task_page.evaluate(
+            '''() =>{ document.querySelector('div.devui-table-view tbody tr:nth-child(1) td:nth-child(12) i.icon-run').click(); }''')
+
     async def week_new_deploy(self):
         await asyncio.sleep(2)
         await self.task_page.waitForSelector('.devui-layout-operate', {'visible': True})
@@ -554,16 +567,16 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(3)
 
     async def new_test_task(self):
-        await asyncio.sleep(2)
+        await asyncio.sleep(3)
         try:
             await self.task_page.click('#global-guidelines .icon-close')
         except Exception as e:
             self.logger.debug(e)
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
 
         try:
-            await self.task_page.click('.guide-container .icon-close')
+            await self.task_page.click('.devui-step-item .icon-close')
         except Exception as e:
             self.logger.debug(e)
 

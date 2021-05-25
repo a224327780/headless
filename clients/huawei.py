@@ -40,8 +40,6 @@ class HuaWei(BaseHuaWei):
             await self.delete_api()
             await self.delete_api_group()
 
-        # await self.init_account()
-
         return await self.get_credit()
 
     async def login(self, username, password):
