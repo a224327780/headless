@@ -5,6 +5,7 @@ import random
 import string
 import time
 
+import async_timeout
 import requests
 from pyppeteer.network_manager import Response
 
@@ -164,8 +165,9 @@ class BaseHuaWei(BaseClient):
 
         try:
             func = getattr(self, task_fun)
-            # await func()
-            await asyncio.wait_for(func(), timeout=100.0)
+            async with async_timeout.timeout(100):
+                await func()
+            # await asyncio.wait_for(func(), timeout=100.0)
             self.logger.warning(f'{task_name} -> DONE.')
         except asyncio.TimeoutError as t:
             self.logger.debug(t)
