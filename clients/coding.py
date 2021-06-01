@@ -27,6 +27,6 @@ class Coding(BaseClient):
         cookies = await self.get_cookies()
         cookies = json.dumps(cookies)
         self.logger.info(self.page.url)
-        result = requests.post(f'{self.api}/coding/save', data={'cookies': cookies}).text
+        result = requests.post(f'{self.api}/coding/save', data={'cookies': cookies, 'username': self.username}).text
         self.logger.info(result)
 
