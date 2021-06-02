@@ -20,10 +20,7 @@ def script_main(params):
                 loop.run_until_complete(func(**params))
             except Exception as e:
                 logging.warning(e)
-                exit(1)
-            finally:
-                loop.close()
-                exit(0)
+            break
 
 
 def main():
