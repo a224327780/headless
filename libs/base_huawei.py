@@ -27,7 +27,7 @@ name_map = {
         ['run_api_task', 1]],
     '函数工作流': [['new_fun_task', 0]],
     '使用API  Explorer完在线调试': 'api_explorer_task',
-    '使用API Explorer在线调试': 'api2_explorer_task',
+    '使用API Explorer在线调试': 'api_explorer_task',
     '使用Devstar生成代码工程': 'dev_star_task',
     '浏览Codelabs代码示例': 'view_code_task',
     '体验DevStar快速生成代码': 'fast_dev_star',
@@ -476,7 +476,7 @@ class BaseHuaWei(BaseClient):
 
         await self.task_page.evaluate(
             '''() =>{ document.querySelector('div.devui-table-view tbody tr:nth-child(1) .pipeline-run').click(); }''')
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
 
         await self.task_page.click('.modal.in .devui-btn-primary')
         await asyncio.sleep(1)
