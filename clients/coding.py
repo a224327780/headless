@@ -36,4 +36,5 @@ class Coding(BaseClient):
             result = requests.post(f'{self.api}/coding/save_cookie', data=data).text
             self.logger.info(result)
         except Exception as e:
-            self.logger.debug(e)
+            self.logger.exception(e)
+            await self.send_photo(self.page, 'coding')
