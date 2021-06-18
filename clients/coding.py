@@ -13,6 +13,8 @@ class Coding(BaseClient):
         self.url = 'https://e.coding.net/login'
 
     async def handler(self, **kwargs):
+        ip = requests.get('http://api.ipify.org/').text
+        self.logger.info(ip)
         try:
             self.logger.info(f'{self.username} start login.')
             await asyncio.sleep(8)
