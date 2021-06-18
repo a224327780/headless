@@ -39,4 +39,3 @@ class Coding(BaseClient):
             self.logger.info(result)
         except Exception as e:
             self.logger.exception(e)
-            await self.send_photo(self.page, 'coding')
