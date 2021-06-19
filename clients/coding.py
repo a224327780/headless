@@ -13,6 +13,8 @@ class Coding(BaseClient):
         self.url = 'https://e.coding.net/login'
 
     async def handler(self, **kwargs):
+        ip = requests.get('http://api.ipify.org/').text
+        self.logger.info(ip)
         try:
             self.logger.info(f'{self.username} start login.')
             await asyncio.sleep(8)
@@ -25,10 +27,15 @@ class Coding(BaseClient):
             await self.page.click('button[type="Submit"]')
             await asyncio.sleep(8)
 
+            url = await self.page.url()
+            user = url.split('.')[0].replace('https://', '')
+
             cookies = await self.get_cookies()
             cookies = json.dumps(cookies)
-            self.logger.info(self.page.url)
-            result = requests.post(f'{self.api}/coding/save', data={'cookies': cookies, 'username': self.username}).text
+            self.logger.info(url)
+
+            data = {'cookies': cookies, 'username': self.username, 'user': user, 'project': user}
+            result = requests.post(f'{self.api}/coding/save_cookie', data=data).text
             self.logger.info(result)
         except Exception as e:
-            await self.send_photo(self.page, 'coding')
+            self.logger.exception(e)
