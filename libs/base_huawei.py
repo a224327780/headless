@@ -333,6 +333,7 @@ class BaseHuaWei(BaseClient):
             await asyncio.sleep(5)
             self.git = await self.get_git(page)
 
+        self.logger.info(self.git)
         if self.git:
             now_time = time.strftime('%Y-%m-%d %H:%M:%S')
             cmd = [
