@@ -545,9 +545,9 @@ class BaseHuaWei(BaseClient):
         self.git = await self.get_git(self.page)
 
     async def get_git(self, page):
-        git_list = await page.querySelectorAll('.devui-table tbody tr')
+        git_list = await page.querySelectorAll('.devui-table tbody tr .avatar-txt-container')
         if git_list and len(git_list):
-            await git_list[0].click('.avatar-txt-container')
+            await git_list[0].click()
             await asyncio.sleep(10)
             git_url = await page.Jeval('.clone-url input', "el => el.getAttribute('title')")
             _user = self.parent_user if self.parent_user else self.username
@@ -757,17 +757,16 @@ class BaseHuaWei(BaseClient):
                     delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
                     await page.goto(delete_url, {'waitUntil': 'load'})
                     await asyncio.sleep(2)
-                    btn_list = await page.querySelectorAll('.modal-footer .btn')
-                    if len(btn_list) == 2:
-                        await btn_list[1].click()
-                        await asyncio.sleep(1)
+                    btn_list = await page.querySelectorAll('.modal-footer .devui-btn-common')
+                    await btn_list[0].click()
+                    await asyncio.sleep(1)
 
-                    await page.click('.form-container .margin-right-s .devui-btn:nth-child(1)')
-                    await asyncio.sleep(2)
-                    await page.type('#deleteProject .projectInput', item['name'])
+                    # await page.click('.form-container .margin-right-s .devui-btn:nth-child(1)')
+                    # await asyncio.sleep(2)
+                    await page.type('.projectInput', item['name'])
                     await asyncio.sleep(0.5)
                     await page.click('.dialog-footer .devui-btn-primary')
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(2)
                 except Exception as e:
                     self.logger.error(e)
         except Exception as e:
