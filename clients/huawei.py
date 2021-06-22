@@ -22,23 +22,23 @@ class HuaWei(BaseHuaWei):
         url = self.page.url
         if 'login' in url:
             self.logger.error(f'{self.username} login fail.')
-            await self.send_photo(self.page, 'login')
+            # await self.send_photo(self.page, 'login')
             return None
 
+        await self.init_region()
         await self.sign_task()
 
-        utc_dt = datetime.utcnow().replace(tzinfo=timezone.utc)
-        h = int(utc_dt.astimezone(timezone(timedelta(hours=8))).strftime('%H'))
+        await self.delete_project()
 
-        if h <= 12:
-            await self.check_project()
+        if await self.new_project():
             await self.start()
 
-        if h > 13:
-            await self.delete_project()
-            await self.delete_function()
-            await self.delete_api()
-            await self.delete_api_group()
+        await self.delete_project()
+        # if h > 13:
+        #     await self.delete_project()
+        #     await self.delete_function()
+        #     await self.delete_api()
+        #     await self.delete_api_group()
 
         return await self.get_credit()
 

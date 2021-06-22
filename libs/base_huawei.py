@@ -12,7 +12,7 @@ from pyppeteer.network_manager import Response
 from libs.base import BaseClient
 
 name_map = {
-    '项目管理': [['week_new_project', 0]],
+    # '项目管理': [['week_new_project', 0]],
     '代码托管': [['week_new_git', 0], ['open_code_task', 1], ['push_code_task', 2]],
     'CloudIDE': [['open_ide_task', 0]],
     '代码检查': [['week_new_code_check', 0], ['check_code_task', 1]],
@@ -53,8 +53,8 @@ class BaseHuaWei(BaseClient):
         self.url = 'https://devcloud.huaweicloud.com/bonususer/home/makebonus'
         self.task_page = None
         self.create_done = True
-        self.home_url = None
         self.cancel = False
+        self.domain = 'https://devcloud.huaweicloud.com'
 
     async def after_handler(self, result, **kwargs):
         if not result:
@@ -72,6 +72,21 @@ class BaseHuaWei(BaseClient):
         cookies = json.dumps(cookies)
         data = {'name': _id, 'credit': credit, 'address_id': address_id, 'cookies': cookies, 'uid': _uid}
         requests.post(f'{self.api}/huawei/save', json=data)
+
+    async def init_region(self):
+        page = await self.browser.newPage()
+        try:
+            await page.goto(self.domain, {'waitUntil': 'load'})
+            await asyncio.sleep(5)
+            page_url = page.url
+            if 'nonsupportRegion' in page_url:
+                element = await page.querySelector('.region-modal-button-primary a')
+                if element:
+                    self.domain = str(await (await element.getProperty('href')).jsonValue())
+        finally:
+            await page.close()
+            self.domain = self.domain.strip('/')
+            self.logger.info(self.domain)
 
     async def start(self):
         if self.page.url != self.url:
@@ -133,13 +148,14 @@ class BaseHuaWei(BaseClient):
         try:
             is_done = await self.page.querySelector(f"{node} .complate-img")
             if is_done:
-                if self.create_done and 'week' in task_fun:
-                    return False
+                # if 'week' in task_fun:
+                #     return False
                 return True
+
             is_done = await self.page.querySelector(f"{node} img.completed")
             if is_done:
-                if self.create_done and 'week' in task_fun:
-                    return False
+                # if 'week' in task_fun:
+                #     return False
                 return True
         except Exception as e:
             self.logger.debug(e)
@@ -180,10 +196,9 @@ class BaseHuaWei(BaseClient):
             return True
 
     async def get_credit(self):
-        result = {'credit': 0, 'uid': ''}
+        result = {'credit': 0, 'uid': '', 'region': ''}
 
         async def intercept_response(response: Response):
-            global uid
             url = response.url
             if 'bonususer/rest/me' in url:
                 data = json.loads(await response.text())
@@ -275,29 +290,49 @@ class BaseHuaWei(BaseClient):
 
     async def open_code_task(self):
         await asyncio.sleep(5)
-        items = await self.task_page.querySelectorAll('div.devui-table-view tbody tr')
+        items = await self.task_page.querySelectorAll('i.icon-more-operate')
         if items and len(items):
-            await self.task_page.evaluate(
-                '''() =>{ document.querySelector('div.devui-table-view tbody tr:nth-child(1) td:nth-child(8) i.icon-more-operate').click(); }''')
+            await items[0].click()
             await asyncio.sleep(1)
             await self.task_page.evaluate(
                 '''() =>{ document.querySelector('ul.dropdown-menu li:nth-child(5) .devui-btn').click(); }''')
             await asyncio.sleep(20)
 
+        # items = await self.task_page.querySelectorAll('div.devui-table-view tbody tr')
+        # if items and len(items):
+        #     await self.task_page.evaluate(
+        #         '''() =>{ document.querySelector('div.devui-table-view tbody tr:nth-child(1) td:nth-child(5) i.icon-more-operate').click(); }''')
+        #     await asyncio.sleep(1)
+        #     await self.task_page.evaluate(
+        #         '''() =>{ document.querySelector('ul.dropdown-menu li:nth-child(5) .devui-btn').click(); }''')
+        #     await asyncio.sleep(20)
+
     async def open_ide_task(self):
         await asyncio.sleep(5)
         try:
+            await self.task_page.click('.devui-checkbox')
+            await self.task_page.click('.devui-btn-danger')
+            await asyncio.sleep(5)
+        except:
+            pass
+
+        try:
             await self.task_page.click('.region-modal-button-content .region-modal-button-common')
-            await asyncio.sleep(1)
+            await asyncio.sleep(3)
         except Exception as e:
             self.logger.debug(e)
 
-        await asyncio.sleep(3)
         await self.task_page.click(
             '.trial-stack-info .trial-stack:nth-child(1) .stack-content .stack-position .devui-btn')
         await asyncio.sleep(10)
 
     async def push_code_task(self):
+        if not self.git:
+            page = await self.browser.newPage()
+            await page.goto(f'{self.domain}/codehub/home', {'waitUntil': 'load'})
+            await asyncio.sleep(5)
+            self.git = await self.get_git(page)
+
         if self.git:
             now_time = time.strftime('%Y-%m-%d %H:%M:%S')
             cmd = [
@@ -336,30 +371,13 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(2)
 
     async def compile_build_task(self):
-        await asyncio.sleep(1)
-        node = 'div.devui-table-view tbody tr:nth-child(1) .operation-btn-section .devui-btn:nth-child(1)'
-        await self.task_page.evaluate('''() =>{ document.querySelector('%s').click(); }''' % node)
-        await asyncio.sleep(1)
-
-        node = 'ul.devui-dropdown-menu li:nth-child(1) a'
-        await self.task_page.evaluate('''() =>{ document.querySelector('%s').click(); }''' % node)
-        await asyncio.sleep(2)
-        await self.task_page.click('.modal-footer .devui-btn-primary')
-        await asyncio.sleep(8)
+        await self.check_code_task()
 
     async def check_code_task(self):
         await asyncio.sleep(5)
-        task_list = await self.task_page.querySelectorAll('.devui-table tbody tr')
-        task_id = await task_list[0].Jeval('.task-card-name span', "el => el.getAttribute('id')")
-        task_id = task_id.replace('task_name', 'task_execute')
-        if await self.task_page.querySelector(f'#{task_id}'):
-            await self.task_page.click(f'#{task_id}')
-        else:
-            btn_list = await self.task_page.querySelectorAll('.devui-btn-text-dark')
-            await btn_list[0].click()
-            await asyncio.sleep(1)
-            await self.task_page.click(f'#{task_id}')
-        await asyncio.sleep(5)
+        task_list = await self.task_page.querySelectorAll('.devui-table tbody tr .devui-btn-primary')
+        if task_list and len(task_list):
+            await task_list[0].click()
 
     async def run_test_task(self):
         await asyncio.sleep(5)
@@ -470,59 +488,47 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(5)
 
     async def pipeline_task(self):
-        items = await self.task_page.querySelectorAll('div.devui-table-view tbody tr')
+        await asyncio.sleep(5)
+        items = await self.task_page.querySelectorAll('div.devui-table-view tbody tr .pipeline-run')
         if len(items) <= 0:
             return
 
-        await self.task_page.evaluate(
-            '''() =>{ document.querySelector('div.devui-table-view tbody tr:nth-child(1) .pipeline-run').click(); }''')
+        await items[0].click()
         await asyncio.sleep(3)
 
         await self.task_page.click('.modal.in .devui-btn-primary')
         await asyncio.sleep(1)
         await self.task_page.click('.modal.in .devui-btn-primary')
-        await asyncio.sleep(1)
-
-        # dropdowns = await self.task_page.querySelectorAll('div.source-value')
-        # dropup = await dropdowns[0].querySelectorAll('.devui-dropup')
-        # await dropup[1].click()
-        # await asyncio.sleep(2)
-        # dropdown_item = await dropup[1].querySelectorAll('.devui-dropdown-item')
-        # await dropdown_item[0].click()
-        # await asyncio.sleep(0.5)
-        # await self.task_page.click('.modal.in .devui-btn-primary')
         await asyncio.sleep(5)
 
-    async def week_new_project(self):
-        await asyncio.sleep(5)
+    async def new_project(self):
+        page = await self.browser.newPage()
         try:
-            notice = await self.task_page.querySelector('#declaration-notice')
-            if notice:
-                btn_list = await self.task_page.querySelectorAll('.quick-create-phoenix .devui-btn')
-                await btn_list[1].click()
-                await asyncio.sleep(1)
-                await self.task_page.click('#declaration-notice div.devui-checkbox label')
-                await asyncio.sleep(1)
-                await self.task_page.click('#declaration-notice .devui-btn.devui-btn-primary')
-                await asyncio.sleep(1)
+            url = f'{self.domain}/home/projectSeries'
+            await page.goto(url, {'waitUntil': 'load'})
+            await asyncio.sleep(2)
+            await page.click('#projet_phoenix')
+            await asyncio.sleep(1)
+            try:
+                await page.click('.icon-close')
+            except:
+                pass
+
+            await page.type('#projectCreateFormProjectName', self.username)
+            await asyncio.sleep(0.5)
+            await page.click('#createProjectBtn')
+            await asyncio.sleep(3)
+            return True
         except Exception as e:
             self.logger.debug(e)
-
-        try:
-            btn_list = await self.task_page.querySelectorAll('.quick-create-phoenix .devui-btn')
-            await btn_list[0].click()
-            await asyncio.sleep(2)
-        except Exception as e:
-            await self.send_photo(self.task_page, 'week_new_project')
-            self.logger.exception(e)
-            await self.close()
-            self.cancel = True
+            return False
+        finally:
+            await page.close()
 
     async def week_new_git(self):
         await asyncio.sleep(5)
         no_data = await self.task_page.querySelector('.new-list .no-data')
-        await self.task_page.waitForSelector('.pull-right', {'visible': True})
-        await self.task_page.click('.pull-right .devui-btn-primary')
+        await self.task_page.click('.devui-btn-primary')
         await asyncio.sleep(1)
         git_name = ''.join(random.choices(string.ascii_letters, k=6))
         if not no_data:
@@ -536,26 +542,28 @@ class BaseHuaWei(BaseClient):
         await self.task_page.click('#newAddRepoBtn')
         await asyncio.sleep(8)
 
-        git_list = await self.task_page.querySelectorAll('.devui-table tbody tr')
-        if git_list and len(git_list) and git_name == 'crawler':
-            await self.task_page.click('#repoNamecrawler')
+        self.git = await self.get_git(self.page)
+
+    async def get_git(self, page):
+        git_list = await page.querySelectorAll('.devui-table tbody tr')
+        if git_list and len(git_list):
+            await git_list[0].click('.avatar-txt-container')
             await asyncio.sleep(10)
-            git_url = await self.task_page.Jeval('.clone-url input', "el => el.getAttribute('title')")
+            git_url = await page.Jeval('.clone-url input', "el => el.getAttribute('title')")
             _user = self.parent_user if self.parent_user else self.username
             git_url = git_url.replace('git@', f'https://{_user}%2F{self.username}:{self.password}@')
-            self.git = git_url.replace('com:', 'com/')
-            self.logger.info(self.git)
+            return git_url.replace('com:', 'com/')
+        return None
 
     async def week_new_code_check(self):
-        await self.task_page.waitForSelector('.pull-right', {'visible': True})
-        await self.task_page.click('.pull-right .devui-btn-primary')
-        await asyncio.sleep(8)
-        btn = await self.task_page.querySelector('#codecheck-new-task-btn-0')
-        if btn:
-            await btn.click()
-            await asyncio.sleep(1)
-            await self.task_page.click('.btn-wrap .devui-btn-primary')
+        try:
+            await self.task_page.waitForSelector('.pull-right', {'visible': True})
+            await self.task_page.click('.pull-right .devui-btn-primary')
+            await self.task_page.waitForSelector('#codecheck-new-task-btn-0', {'visible': True})
+            await self.task_page.click('#codecheck-new-task-btn-0')
             await asyncio.sleep(5)
+        except Exception as e:
+            self.logger.exception(e)
 
     async def upload_task(self):
         await asyncio.sleep(3)
@@ -717,67 +725,56 @@ class BaseHuaWei(BaseClient):
         await page.close()
         await asyncio.sleep(1)
 
-    async def check_project(self):
+    async def check_is_new_project(self):
         page = await self.browser.newPage()
-        domains = ['https://devcloud.huaweicloud.com', 'https://devcloud.cn-north-4.huaweicloud.com']
         try:
-            for domain in domains:
-                url = f'{domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40&project_type=&archive=1'
-                res = await page.goto(url, {'waitUntil': 'load'})
-                data = await res.json()
-                if data.get('error') or not data.get('result'):
-                    await asyncio.sleep(1)
-                    continue
+            url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40&project_type=&archive=1'
+            res = await page.goto(url, {'waitUntil': 'load'})
+            data = await res.json()
+            if data.get('error_code'):
+                return False
 
-                projects = data['result']['project_info_list']
-                self.home_url = domain
-
-                if len(projects) > 0:
-                    self.create_done = False
-                    break
-                await asyncio.sleep(1)
+            projects = data['result']['project_info_list']
+            return len(projects) <= 0
         except Exception as e:
-            self.logger.error(e)
+            self.logger.exception(e)
+            return False
         finally:
             await page.close()
-            self.logger.info(self.create_done)
 
     async def delete_project(self):
         page = await self.browser.newPage()
-        domains = ['https://devcloud.huaweicloud.com', 'https://devcloud.cn-north-4.huaweicloud.com']
-        for i in range(3):
-            try:
-                for domain in domains:
-                    url = f'{domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40&project_type=&archive=1'
-                    res = await page.goto(url, {'waitUntil': 'load'})
-                    data = await res.json()
-                    if data.get('error') or not data.get('result'):
-                        continue
+        try:
+            url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40&project_type=&archive=1'
+            res = await page.goto(url, {'waitUntil': 'load'})
+            data = await res.json()
+            if data.get('error') or not data.get('result'):
+                return
 
-                    for item in data['result']['project_info_list']:
-                        try:
-                            self.logger.warning(f"delete project {item['name']}")
-                            delete_url = f"{domain}/projects/project/{item['project_id']}/config/info"
-                            await page.goto(delete_url, {'waitUntil': 'load'})
-                            await asyncio.sleep(2)
-                            btn_list = await page.querySelectorAll('.modal-footer .btn')
-                            if len(btn_list) == 2:
-                                await btn_list[1].click()
-                                await asyncio.sleep(1)
+            for item in data['result']['project_info_list']:
+                try:
+                    self.logger.warning(f"delete project {item['name']}")
+                    delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
+                    await page.goto(delete_url, {'waitUntil': 'load'})
+                    await asyncio.sleep(2)
+                    btn_list = await page.querySelectorAll('.modal-footer .btn')
+                    if len(btn_list) == 2:
+                        await btn_list[1].click()
+                        await asyncio.sleep(1)
 
-                            await page.click('.form-container .margin-right-s .devui-btn:nth-child(1)')
-                            await asyncio.sleep(2)
-                            await page.type('#deleteProject .projectInput', item['name'])
-                            await asyncio.sleep(0.5)
-                            await page.click('.dialog-footer .devui-btn-primary')
-                            await asyncio.sleep(1)
-                        except Exception as e:
-                            self.logger.error(e)
-                break
-            except Exception as e:
-                self.logger.error(e)
-                await asyncio.sleep(5)
-        await page.close()
+                    await page.click('.form-container .margin-right-s .devui-btn:nth-child(1)')
+                    await asyncio.sleep(2)
+                    await page.type('#deleteProject .projectInput', item['name'])
+                    await asyncio.sleep(0.5)
+                    await page.click('.dialog-footer .devui-btn-primary')
+                    await asyncio.sleep(1)
+                except Exception as e:
+                    self.logger.error(e)
+        except Exception as e:
+            self.logger.error(e)
+            await asyncio.sleep(5)
+        finally:
+            await page.close()
 
     async def delete_api(self):
         page = await self.browser.newPage()
@@ -838,10 +835,10 @@ class BaseHuaWei(BaseClient):
 
     async def _close_test(self):
         try:
-            await asyncio.sleep(1)
-            await self.task_page.click('#global-guidelines .icon-close')
             await asyncio.sleep(2)
-            await self.task_page.click('.guide-container .icon-close')
+            await self.task_page.click('.icon-close')
+            await asyncio.sleep(3)
+            await self.task_page.click('.icon-close')
             await asyncio.sleep(1)
         except Exception as e:
             self.logger.debug(e)
