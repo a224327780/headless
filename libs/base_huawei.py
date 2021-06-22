@@ -542,13 +542,14 @@ class BaseHuaWei(BaseClient):
         await self.task_page.click('#newAddRepoBtn')
         await asyncio.sleep(8)
 
-        self.git = await self.get_git(self.page)
+        self.git = await self.get_git(self.task_page)
 
     async def get_git(self, page):
-        git_list = await page.querySelectorAll('.devui-table tbody tr .avatar-txt-container')
+        git_list = await page.querySelectorAll('.devui-table tbody tr .avatar-img')
         if git_list and len(git_list):
             await git_list[0].click()
-            await asyncio.sleep(10)
+            await asyncio.sleep(3)
+            await page.waitForSelector('#codehub-main-content', {'visible': True})
             git_url = await page.Jeval('.clone-url input', "el => el.getAttribute('title')")
             _user = self.parent_user if self.parent_user else self.username
             git_url = git_url.replace('git@', f'https://{_user}%2F{self.username}:{self.password}@')
@@ -757,7 +758,7 @@ class BaseHuaWei(BaseClient):
                     delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
                     await page.goto(delete_url, {'waitUntil': 'load'})
                     await asyncio.sleep(2)
-                    btn_list = await page.querySelectorAll('.modal-footer .devui-btn-common')
+                    btn_list = await page.querySelectorAll('.margin-right-s .devui-btn-common')
                     await btn_list[0].click()
                     await asyncio.sleep(1)
 
@@ -835,9 +836,13 @@ class BaseHuaWei(BaseClient):
     async def _close_test(self):
         try:
             await asyncio.sleep(2)
-            await self.task_page.click('.icon-close')
-            await asyncio.sleep(3)
-            await self.task_page.click('.icon-close')
+            await self.task_page.click('#global-guidelines .icon-close')
+            await asyncio.sleep(2)
+        except Exception as e:
+            self.logger.debug(e)
+
+        try:
+            await self.task_page.click('.devui-step-item .icon-close')
             await asyncio.sleep(1)
         except Exception as e:
             self.logger.debug(e)
