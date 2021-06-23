@@ -4,6 +4,7 @@ import os
 import random
 import string
 import time
+from pathlib import Path
 
 import async_timeout
 import requests
@@ -336,18 +337,19 @@ class BaseHuaWei(BaseClient):
         self.logger.info(self.git)
         if self.git:
             now_time = time.strftime('%Y-%m-%d %H:%M:%S')
+            repo_name = Path(self.git).stem
             cmd = [
                 'cd /tmp',
                 'git config --global user.name "caoyufei" && git config --global user.email "atcaoyufei@gmail.com"',
                 f'git clone {self.git}',
-                'cd /tmp/crawler',
+                f'cd /tmp/{repo_name}',
                 f'echo "{now_time}" >> time.txt',
                 "git add .",
                 "git commit -am 'time'",
                 "git push origin master",
             ]
             os.system(' && '.join(cmd))
-            os.system('rm -rf /tmp/crawler')
+            os.system(f'rm -rf /tmp/{repo_name}')
             await asyncio.sleep(1)
 
     async def week_new_compile_build(self):
@@ -377,8 +379,15 @@ class BaseHuaWei(BaseClient):
     async def check_code_task(self):
         await asyncio.sleep(5)
         task_list = await self.task_page.querySelectorAll('.devui-table tbody tr .devui-btn-primary')
+        self.logger.info(len(task_list))
         if task_list and len(task_list):
             await task_list[0].click()
+            await asyncio.sleep(3)
+            try:
+                await self.task_page.click('.modal.in .devui-btn-primary')
+            except Exception as e:
+                self.logger.debug(e)
+        await asyncio.sleep(2)
 
     async def run_test_task(self):
         await asyncio.sleep(5)
@@ -498,7 +507,7 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(3)
 
         await self.task_page.click('.modal.in .devui-btn-primary')
-        await asyncio.sleep(1)
+        await asyncio.sleep(2)
         await self.task_page.click('.modal.in .devui-btn-primary')
         await asyncio.sleep(5)
 
@@ -512,6 +521,7 @@ class BaseHuaWei(BaseClient):
             await asyncio.sleep(1)
             try:
                 await page.click('.icon-close')
+                await asyncio.sleep(1)
             except:
                 pass
 
@@ -528,12 +538,9 @@ class BaseHuaWei(BaseClient):
 
     async def week_new_git(self):
         await asyncio.sleep(5)
-        no_data = await self.task_page.querySelector('.new-list .no-data')
         await self.task_page.click('.devui-btn-primary')
         await asyncio.sleep(1)
         git_name = ''.join(random.choices(string.ascii_letters, k=6))
-        if not no_data:
-            git_name = 'crawler'
         await self.task_page.type('#rname', git_name)
         await asyncio.sleep(0.5)
 

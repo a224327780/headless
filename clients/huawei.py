@@ -28,17 +28,16 @@ class HuaWei(BaseHuaWei):
         await self.init_region()
         await self.sign_task()
 
-        await self.delete_project()
+        # await self.delete_project()
 
         if await self.new_project():
             await self.start()
 
         await self.delete_project()
-        # if h > 13:
-        #     await self.delete_project()
-        #     await self.delete_function()
-        #     await self.delete_api()
-        #     await self.delete_api_group()
+
+        await self.delete_function()
+        await self.delete_api()
+        await self.delete_api_group()
 
         return await self.get_credit()
 
