@@ -379,7 +379,6 @@ class BaseHuaWei(BaseClient):
     async def check_code_task(self):
         await asyncio.sleep(5)
         task_list = await self.task_page.querySelectorAll('.devui-table tbody tr .devui-btn-primary')
-        self.logger.info(len(task_list))
         if task_list and len(task_list):
             await task_list[0].click()
             await asyncio.sleep(3)
@@ -506,9 +505,13 @@ class BaseHuaWei(BaseClient):
         await items[0].click()
         await asyncio.sleep(3)
 
-        await self.task_page.click('.modal.in .devui-btn-primary')
-        await asyncio.sleep(2)
-        await self.task_page.click('.modal.in .devui-btn-primary')
+        items = await self.task_page.querySelectorAll('.modal.in .devui-btn-primary')
+        if len(items) > 0:
+            await items[0].click()
+            await asyncio.sleep(2)
+        items = await self.task_page.querySelectorAll('.modal.in .devui-btn-primary')
+        if len(items) > 0:
+            await items[0].click()
         await asyncio.sleep(5)
 
     async def new_project(self):
