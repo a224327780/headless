@@ -30,8 +30,8 @@ class HuaWei(BaseHuaWei):
         await self.init_region()
         await self.sign_task()
 
-        # if await self.new_project():
-        #     await self.start()
+        if await self.new_project():
+            await self.start()
 
         await self.async_timeout_run('delete_project')
         await self.async_timeout_run('delete_function')
