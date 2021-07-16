@@ -2,6 +2,8 @@ import asyncio
 import os
 from datetime import datetime, timezone, timedelta
 
+import async_timeout
+
 from libs.base_huawei import BaseHuaWei
 
 
@@ -33,13 +35,19 @@ class HuaWei(BaseHuaWei):
         if await self.new_project():
             await self.start()
 
-        await self.delete_project()
-
-        await self.delete_function()
-        await self.delete_api()
-        await self.delete_api_group()
+        await self.await_run('delete_project')
+        await self.await_run('delete_function')
+        await self.await_run('delete_api')
+        await self.await_run('delete_api_group')
 
         return await self.get_credit()
+
+    async def await_run(self, callback):
+        try:
+            async with async_timeout.timeout(60):
+                await getattr(self, callback)()
+        except asyncio.TimeoutError as t:
+            self.logger.warning(t)
 
     async def login(self, username, password):
         await self.page.waitForSelector('input[name="userAccount"]')

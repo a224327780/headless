@@ -8,6 +8,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
+import async_timeout
 import requests
 from pyppeteer import launch, launcher
 from pyppeteer.browser import Browser
@@ -153,3 +154,4 @@ class BaseClient:
         files = {'file': open(file, 'rb')}
         requests.post(f'{self.api}/tg/photo', files=files,
                       data={'chat_id': '-375307506', 'title': f'{self.username}->{title}'}, timeout=20)
+
