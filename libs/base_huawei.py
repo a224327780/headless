@@ -182,9 +182,9 @@ class BaseHuaWei(BaseClient):
 
         try:
             func = getattr(self, task_fun)
-            async with async_timeout.timeout(100):
-                await func()
-            # await asyncio.wait_for(func(), timeout=100.0)
+            # async with async_timeout.timeout(100):
+            #     await func()
+            await asyncio.wait_for(func(), timeout=100.0)
             self.logger.warning(f'{task_name} -> DONE.')
         except asyncio.TimeoutError as t:
             self.logger.warning(t)
@@ -718,9 +718,9 @@ class BaseHuaWei(BaseClient):
                             await asyncio.sleep(3)
                             continue
 
-                        await page.type('.modal-confirm-text input[type="text"]', 'DELETE')
+                        await page.type('.modal-confirm-text input[type="text"]', 'DELETE', {'delay': 10})
                         await asyncio.sleep(1)
-                        await page.click('.ti3-modal-footer .ti3-btn-danger')
+                        await page.click('.ti3-modal-footer .ti3-btn-middle')
                         await asyncio.sleep(1)
 
                         buttons = await page.querySelectorAll('.ti3-modal-footer [type="button"]')
