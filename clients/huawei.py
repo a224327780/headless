@@ -42,8 +42,8 @@ class HuaWei(BaseHuaWei):
 
     async def async_timeout_run(self, callback):
         try:
-            async with async_timeout.timeout(60):
-                await getattr(self, callback)()
+            func = getattr(self, callback)
+            await asyncio.wait_for(func(), timeout=60.0)
         except asyncio.TimeoutError as t:
             self.logger.warning(t)
 
