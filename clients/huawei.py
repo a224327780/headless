@@ -31,8 +31,7 @@ class HuaWei(BaseHuaWei):
         await self.sign_task()
 
         if await self.new_project():
-            # await self.start()
-            pass
+            await self.start()
 
         await self.async_timeout_run('delete_project')
         await self.async_timeout_run('delete_function')
@@ -46,7 +45,7 @@ class HuaWei(BaseHuaWei):
             func = getattr(self, callback)
             await asyncio.wait_for(func(), timeout=60.0)
         except asyncio.TimeoutError as t:
-            self.logger.warning(t)
+            self.logger.warning(f'{callback} {t}')
 
     async def login(self, username, password):
         await self.page.waitForSelector('input[name="userAccount"]')
