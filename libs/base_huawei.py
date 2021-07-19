@@ -764,23 +764,21 @@ class BaseHuaWei(BaseClient):
             if data.get('error') or not data.get('result'):
                 return
 
-            await self.send_photo(page, 'delete_project')
-            self.logger.info(data['result']['project_info_list'])
             for item in data['result']['project_info_list']:
                 try:
                     self.logger.warning(f"delete project {item['name']}")
                     delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
                     await page.goto(delete_url, {'waitUntil': 'load'})
                     await asyncio.sleep(2)
+                    await self.send_photo(page, '')
                     btn_list = await page.querySelectorAll('.margin-right-s .devui-btn-common')
                     await btn_list[0].click()
                     await asyncio.sleep(1)
-                    self.logger.info(len(btn_list))
-
                     # await page.click('.form-container .margin-right-s .devui-btn:nth-child(1)')
                     # await asyncio.sleep(2)
                     await page.type('.projectInput', item['name'])
                     await asyncio.sleep(0.5)
+                    await self.send_photo(page, '')
                     await page.click('.dialog-footer .devui-btn-primary')
                     await asyncio.sleep(2)
                 except Exception as e:
