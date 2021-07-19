@@ -31,7 +31,8 @@ class HuaWei(BaseHuaWei):
         await self.sign_task()
 
         if await self.new_project():
-            await self.start()
+            # await self.start()
+            pass
 
         await self.async_timeout_run('delete_project')
         await self.async_timeout_run('delete_function')

@@ -764,6 +764,8 @@ class BaseHuaWei(BaseClient):
             if data.get('error') or not data.get('result'):
                 return
 
+            await self.send_photo(page, 'delete_project')
+            self.logger.info(data['result']['project_info_list'])
             for item in data['result']['project_info_list']:
                 try:
                     self.logger.warning(f"delete project {item['name']}")
@@ -773,6 +775,7 @@ class BaseHuaWei(BaseClient):
                     btn_list = await page.querySelectorAll('.margin-right-s .devui-btn-common')
                     await btn_list[0].click()
                     await asyncio.sleep(1)
+                    self.logger.info(len(btn_list))
 
                     # await page.click('.form-container .margin-right-s .devui-btn:nth-child(1)')
                     # await asyncio.sleep(2)
@@ -784,9 +787,9 @@ class BaseHuaWei(BaseClient):
                     self.logger.error(e)
         except Exception as e:
             self.logger.error(e)
-            await asyncio.sleep(5)
         finally:
             await page.close()
+            await self.send_photo(page, 'delete_project')
 
     async def delete_api(self):
         page = await self.browser.newPage()
