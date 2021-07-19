@@ -691,51 +691,52 @@ class BaseHuaWei(BaseClient):
         url_list = ['https://console.huaweicloud.com/functiongraph/?region=cn-south-1#/serverless/functionList',
                     'https://console.huaweicloud.com/functiongraph/?region=cn-north-4#/serverless/functionList']
 
-        for _url in url_list:
-            await page.goto(_url, {'waitUntil': 'load'})
-            await page.setViewport({'width': self.width + 560, 'height': self.height})
-            try:
-                await page.waitForSelector('.ti3-action-menu-item', {'timeout': 10000})
-            except Exception as e:
-                self.logger.debug(e)
-                continue
+        try:
+            for _url in url_list:
+                await page.goto(_url, {'waitUntil': 'load'})
+                await page.setViewport({'width': self.width + 560, 'height': self.height})
+                try:
+                    await page.waitForSelector('.ti3-action-menu-item', {'timeout': 10000})
+                except Exception as e:
+                    self.logger.debug(e)
+                    continue
 
-            while 1:
-                elements = await page.querySelectorAll('td[style="white-space: normal;"]')
-                if not elements or not len(elements):
-                    self.logger.info('no functions.')
-                    break
+                while 1:
+                    elements = await page.querySelectorAll('td[style="white-space: normal;"]')
+                    if not elements or not len(elements):
+                        self.logger.info('no functions.')
+                        break
 
-                a_list = await elements[0].querySelectorAll('a.ti3-action-menu-item')
-                # content = str(await (await element.getProperty('textContent')).jsonValue()).strip()
-                if len(a_list) == 2:
-                    try:
-                        await a_list[1].click()
-                        await asyncio.sleep(1)
+                    a_list = await elements[0].querySelectorAll('a.ti3-action-menu-item')
+                    # content = str(await (await element.getProperty('textContent')).jsonValue()).strip()
+                    if len(a_list) == 2:
+                        try:
+                            await a_list[1].click()
+                            await asyncio.sleep(1)
 
-                        _input = await page.querySelector('.modal-confirm-text input[type="text"]')
-                        if not _input:
-                            await asyncio.sleep(3)
-                            continue
+                            _input = await page.querySelector('.modal-confirm-text input[type="text"]')
+                            if not _input:
+                                await asyncio.sleep(3)
+                                continue
 
-                        await page.type('.modal-confirm-text input[type="text"]', 'DELETE', {'delay': 10})
-                        await asyncio.sleep(1)
-                        await page.click('.ti3-modal-footer .ti3-btn-middle')
-                        await asyncio.sleep(1)
+                            await page.type('.modal-confirm-text input[type="text"]', 'DELETE', {'delay': 10})
+                            await asyncio.sleep(1)
+                            await page.click('.ti3-modal-footer .ti3-btn-middle')
+                            await asyncio.sleep(1)
 
-                        buttons = await page.querySelectorAll('.ti3-modal-footer [type="button"]')
-                        if buttons and len(buttons):
-                            await buttons[1].click()
-                            await asyncio.sleep(2)
+                            buttons = await page.querySelectorAll('.ti3-modal-footer [type="button"]')
+                            if buttons and len(buttons):
+                                await buttons[1].click()
+                                await asyncio.sleep(2)
 
-                    except Exception as e:
-                        self.logger.debug(e)
-                        await asyncio.sleep(1)
+                        except Exception as e:
+                            self.logger.debug(e)
+                            await asyncio.sleep(1)
 
+                await asyncio.sleep(1)
+        finally:
+            await page.close()
             await asyncio.sleep(1)
-
-        await page.close()
-        await asyncio.sleep(1)
 
     async def check_is_new_project(self):
         page = await self.browser.newPage()
