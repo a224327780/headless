@@ -770,7 +770,6 @@ class BaseHuaWei(BaseClient):
                     delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
                     await page.goto(delete_url, {'waitUntil': 'load'})
                     await asyncio.sleep(2)
-                    await self.send_photo(page, '')
                     btn_list = await page.querySelectorAll('.margin-right-s .devui-btn-common')
                     await btn_list[0].click()
                     await asyncio.sleep(1)
@@ -782,6 +781,7 @@ class BaseHuaWei(BaseClient):
                     self.logger.info(item['name'])
                     await page.click('.dialog-footer .devui-btn-primary')
                     await asyncio.sleep(2)
+                    await self.send_photo(page, '')
                 except Exception as e:
                     self.logger.error(e)
         except Exception as e:
