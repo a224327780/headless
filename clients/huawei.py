@@ -35,9 +35,9 @@ class HuaWei(BaseHuaWei):
 
         data = await self.get_credit()
 
-        await self.async_timeout_run('delete_function')
-        await self.async_timeout_run('delete_api')
-        await self.async_timeout_run('delete_api_group')
+        # await self.async_timeout_run('delete_function')
+        # await self.async_timeout_run('delete_api')
+        # await self.async_timeout_run('delete_api_group')
         await self.async_timeout_run('delete_project')
 
         return data
