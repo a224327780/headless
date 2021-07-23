@@ -30,13 +30,12 @@ class HuaWei(BaseHuaWei):
         await self.init_region()
         await self.sign_task()
 
-        # await self.async_timeout_run('delete_function')
-        # await self.async_timeout_run('delete_api')
-        # await self.async_timeout_run('delete_api_group')
-
         if await self.new_project():
             await self.start()
 
+        await self.async_timeout_run('delete_function')
+        await self.async_timeout_run('delete_api')
+        await self.async_timeout_run('delete_api_group')
         await self.async_timeout_run('delete_project')
 
         return await self.get_credit()
