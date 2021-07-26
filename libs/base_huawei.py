@@ -777,11 +777,9 @@ class BaseHuaWei(BaseClient):
                     # await asyncio.sleep(2)
                     await page.type('.projectInput', item['name'])
                     await asyncio.sleep(0.5)
-                    await self.send_photo(page, '')
                     self.logger.info(item['name'])
                     await page.click('.dialog-footer .devui-btn-primary')
                     await asyncio.sleep(2)
-                    await self.send_photo(page, '')
                 except Exception as e:
                     self.logger.error(e)
         except Exception as e:
