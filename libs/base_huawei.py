@@ -724,6 +724,7 @@ class BaseHuaWei(BaseClient):
 
                             except Exception as e:
                                 self.logger.error(e)
+                                await self.send_photo(page, 'delete function')
                             break
                     elements = await page.querySelectorAll('a.ti3-action-menu-item')
 
