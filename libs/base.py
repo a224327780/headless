@@ -37,9 +37,6 @@ class BaseClient:
     async def after_run(self, **kwargs):
         pass
 
-    async def after_handler(self, **kwargs):
-        pass
-
     async def run(self, **kwargs):
         await self.before_run()
 
@@ -53,43 +50,55 @@ class BaseClient:
             self.username = username
             self.password = password
             try:
-                await self.init(**kwargs)
-                result = await self.handler(**kwargs)
-                await self.after_handler(result=result, username=username)
-            except Exception as e:
-                self.logger.exception(e)
+                async with async_timeout.timeout(240):
+                    await self.run_master(**kwargs)
+            except asyncio.TimeoutError:
+                self.logger.warning(f'{username} timeout.')
             finally:
+                await self.after_run()
                 await self.close()
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)
+
+    async def run_master(self, **kwargs):
+        try:
+            await self.init(**kwargs)
+            await self.handler(**kwargs)
+        except Exception as e:
+            self.logger.exception(e)
 
     async def init(self, **kwargs):
         # launcher.DEFAULT_ARGS.remove('--enable-automation')
         self.browser = await launch(ignorehttpserrrors=True, headless=kwargs.get('headless', True),
                                     args=['--disable-infobars', '--disable-web-security', '--no-sandbox',
                                           '--start-maximized', '--disable-features=IsolateOrigins,site-per-process'])
-        self.page = await self.browser.newPage()
+        self.page = await self.get_new_win_page(self.url)
+
+    async def get_new_win_page(self, url, intercept_request=None):
+        page = await self.browser.newPage()
         try:
-            self.page.on('dialog', lambda dialog: asyncio.ensure_future(self.close_dialog(dialog)))
+            page.on('dialog', lambda dialog: asyncio.ensure_future(self.close_dialog(dialog)))
         except Exception as e:
             self.logger.warning(e)
 
-        await self.page.setUserAgent(self.ua)
-        await self.page.setViewport(viewport={'width': self.width, 'height': self.height})
+        await page.setUserAgent(self.ua)
+        await page.setViewport(viewport={'width': self.width, 'height': self.height})
 
         js_text = """
         () =>{
             Object.defineProperties(navigator,{ webdriver:{ get: () => false } });
             window.navigator.chrome = { runtime: {},  };
-            Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN','en-US', 'en'] });
             Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5,6], });
          }
             """
-        await self.page.evaluateOnNewDocument(js_text)
+        await page.evaluateOnNewDocument(js_text)
 
-        # await self.page.setRequestInterception(True)
-        # self.page.on('request', self.intercept_request)
+        if intercept_request:
+            await page.setRequestInterception(True)
+            page.on('request', intercept_request)
 
-        await self.page.goto(self.url, {'waitUntil': 'load'})
+        await page.goto(url, {'waitUntil': 'load'})
+        return page
 
     async def intercept_request(self, request: Request):
         self.logger.info(request.url)
@@ -110,16 +119,19 @@ class BaseClient:
 
     async def close(self):
         try:
-            await self.page.close()
+            if self.page and not self.page.isClosed():
+                await self.page.close()
+                self.page = None
         except Exception as e:
             self.logger.debug(e)
 
         try:
-            await self.browser.close()
+            if self.browser and self.browser:
+                await self.browser.close()
+                self.browser = None
         except Exception as e:
             self.logger.debug(e)
             # os.system("kill -9 `ps -ef|grep chrome|grep -v grep|awk '{print $2}'`")
-            self.browser = None
 
     @staticmethod
     async def close_dialog(dialog):
@@ -154,4 +166,3 @@ class BaseClient:
         files = {'file': open(file, 'rb')}
         requests.post(f'{self.api}/tg/photo', files=files,
                       data={'chat_id': '-375307506', 'title': f'{self.username}->{title}'}, timeout=20)
-

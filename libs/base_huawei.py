@@ -6,7 +6,6 @@ import string
 import time
 from pathlib import Path
 
-import async_timeout
 import requests
 from pyppeteer.network_manager import Response
 
@@ -57,12 +56,11 @@ class BaseHuaWei(BaseClient):
         self.cancel = False
         self.domain = 'https://devcloud.huaweicloud.com'
 
-    async def after_handler(self, result, **kwargs):
-        if not result:
-            return
+    async def after_run(self, **kwargs):
+        result = await self.get_credit()
         credit = result.get('credit')
         _uid = result.get('uid')
-        username = kwargs.get('username')
+        username = self.username
         self.logger.warning(f"{username} -> {credit}\n")
         if type(credit) == str:
             credit = int(credit.replace('码豆', '').strip())
@@ -105,10 +103,10 @@ class BaseHuaWei(BaseClient):
         except Exception as e:
             self.logger.debug(e)
 
-        try:
-            await self.init_account()
-        except Exception as e:
-            self.logger.debug(e)
+        # try:
+        #     await self.init_account()
+        # except Exception as e:
+        #     self.logger.debug(e)
 
     async def regular(self):
         await self.execute('regular-missions', '.daily-list li', 'feedback-', False, name_map)
@@ -182,13 +180,8 @@ class BaseHuaWei(BaseClient):
 
         try:
             func = getattr(self, task_fun)
-            # async with async_timeout.timeout(100):
-            #     await func()
-            await asyncio.wait_for(func(), timeout=100.0)
+            await func()
             self.logger.warning(f'{task_name} -> DONE.')
-        except asyncio.TimeoutError as t:
-            self.logger.warning(t)
-            # await self.send_photo(self.task_page, task_fun)
         except Exception as e:
             self.logger.error(e)
         finally:
@@ -290,30 +283,22 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(2)
 
     async def open_code_task(self):
-        await asyncio.sleep(5)
-        items = await self.task_page.querySelectorAll('i.icon-more-operate')
+        await asyncio.sleep(3)
+        self.git = await self.get_git_url(self.task_page)
+        self.logger.info(self.git)
+        items = await self.task_page.querySelectorAll(
+            '.selfcodehubhead-right-items .selfcodehubhead-right-item .devui-btn')
         if items and len(items):
-            await items[0].click()
-            await asyncio.sleep(1)
-            await self.task_page.evaluate(
-                '''() =>{ document.querySelector('ul.dropdown-menu li:nth-child(5) .devui-btn').click(); }''')
+            await items[3].click()
             await asyncio.sleep(20)
-
-        # items = await self.task_page.querySelectorAll('div.devui-table-view tbody tr')
-        # if items and len(items):
-        #     await self.task_page.evaluate(
-        #         '''() =>{ document.querySelector('div.devui-table-view tbody tr:nth-child(1) td:nth-child(5) i.icon-more-operate').click(); }''')
-        #     await asyncio.sleep(1)
-        #     await self.task_page.evaluate(
-        #         '''() =>{ document.querySelector('ul.dropdown-menu li:nth-child(5) .devui-btn').click(); }''')
-        #     await asyncio.sleep(20)
+            await self.close_page()
 
     async def open_ide_task(self):
         await asyncio.sleep(5)
         try:
             await self.task_page.click('.devui-checkbox')
+            await asyncio.sleep(3)
             await self.task_page.click('.devui-btn-danger')
-            await asyncio.sleep(5)
         except:
             pass
 
@@ -332,7 +317,7 @@ class BaseHuaWei(BaseClient):
             page = await self.browser.newPage()
             await page.goto(f'{self.domain}/codehub/home', {'waitUntil': 'load'})
             await asyncio.sleep(5)
-            self.git = await self.get_git(page)
+            self.git = await self.get_git_url(page)
 
         self.logger.info(self.git)
         if self.git:
@@ -515,29 +500,31 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(5)
 
     async def new_project(self):
-        page = await self.browser.newPage()
-        try:
+        if await self.check_is_new_project():
+            self.logger.info(f'create project {self.username}')
             url = f'{self.domain}/home/projectSeries'
-            await page.goto(url, {'waitUntil': 'load'})
-            await asyncio.sleep(2)
-            await page.click('#projet_phoenix')
-            await asyncio.sleep(1)
+            page = await self.get_new_win_page(url)
             try:
-                await page.click('.icon-close')
+                await asyncio.sleep(2)
+                await page.click('#projet_phoenix')
                 await asyncio.sleep(1)
-            except:
-                pass
+                try:
+                    await page.click('.icon-close')
+                    await asyncio.sleep(1)
+                except:
+                    pass
 
-            await page.type('#projectCreateFormProjectName', self.username)
-            await asyncio.sleep(0.5)
-            await page.click('#createProjectBtn')
-            await asyncio.sleep(3)
-            return True
-        except Exception as e:
-            self.logger.debug(e)
-            return False
-        finally:
-            await page.close()
+                await page.type('#projectCreateFormProjectName', self.username)
+                await asyncio.sleep(0.5)
+                await page.click('#createProjectBtn')
+                await asyncio.sleep(3)
+                return True
+            except Exception as e:
+                self.logger.debug(e)
+                return False
+            finally:
+                await page.close()
+        return True
 
     async def week_new_git(self):
         await asyncio.sleep(5)
@@ -551,17 +538,20 @@ class BaseHuaWei(BaseClient):
         await btn_list[2].click()
 
         await self.task_page.click('#newAddRepoBtn')
-        await asyncio.sleep(8)
+        await asyncio.sleep(5)
 
-        self.git = await self.get_git(self.task_page)
+        # self.git = await self.get_git(self.task_page)
+        # self.logger.info(self.git)
 
-    async def get_git(self, page):
+    async def get_git_url(self, page):
         git_list = await page.querySelectorAll('.devui-table tbody tr .avatar-img')
         if git_list and len(git_list):
             await git_list[0].click()
-            await asyncio.sleep(3)
-            await page.waitForSelector('#codehub-main-content', {'visible': True})
-            git_url = await page.Jeval('.clone-url input', "el => el.getAttribute('title')")
+            await asyncio.sleep(5)
+            await page.waitForSelector('.repo-info-right', {'visible': True})
+            await page.click('.selfcodehubhead-right-item .devui-dropdown')
+            await asyncio.sleep(1)
+            git_url = await page.Jeval('.clone-url .url', "el => el.getAttribute('title')")
             _user = self.parent_user if self.parent_user else self.username
             git_url = git_url.replace('git@', f'https://{_user}%2F{self.username}:{self.password}@')
             return git_url.replace('com:', 'com/')
@@ -687,53 +677,56 @@ class BaseHuaWei(BaseClient):
 
     async def delete_function(self):
         page = await self.browser.newPage()
-
+        await page.setViewport({'width': self.width, 'height': self.height})
+        await page.setUserAgent(self.ua)
         url_list = ['https://console.huaweicloud.com/functiongraph/?region=cn-south-1#/serverless/functionList',
                     'https://console.huaweicloud.com/functiongraph/?region=cn-north-4#/serverless/functionList']
 
         try:
             for _url in url_list:
                 await page.goto(_url, {'waitUntil': 'load'})
-                await page.setViewport({'width': self.width + 560, 'height': self.height})
                 try:
                     await page.waitForSelector('.ti3-action-menu-item', {'timeout': 10000})
                 except Exception as e:
                     self.logger.debug(e)
                     continue
 
-                while 1:
-                    elements = await page.querySelectorAll('td[style="white-space: normal;"]')
-                    if not elements or not len(elements):
-                        self.logger.info('no functions.')
-                        break
+                elements = await page.querySelectorAll('a.ti3-action-menu-item')
+                if not elements or not len(elements):
+                    self.logger.info('no functions.')
+                    break
 
-                    a_list = await elements[0].querySelectorAll('a.ti3-action-menu-item')
-                    # content = str(await (await element.getProperty('textContent')).jsonValue()).strip()
-                    if len(a_list) == 2:
-                        try:
-                            await a_list[1].click()
-                            await asyncio.sleep(1)
+                for i in range(8):
+                    for element in elements:
+                        s = await element.Jeval('section', 'el => el.textContent')
+                        if s in ['Delete', '删除']:
+                            _id = str(await (await element.getProperty('id')).jsonValue())
+                            try:
+                                await element.click()
+                                self.logger.info(f'delete function {_id}.')
+                                # await page.evaluate('''() =>{ document.querySelector('#%s').click(); }''' % _id)
+                                await asyncio.sleep(1)
 
-                            _input = await page.querySelector('.modal-confirm-text input[type="text"]')
-                            if not _input:
-                                await asyncio.sleep(3)
-                                continue
+                                _input = await page.querySelector('.modal-confirm-text input[type="text"]')
+                                if not _input:
+                                    await asyncio.sleep(1)
+                                    continue
 
-                            await page.type('.modal-confirm-text input[type="text"]', 'DELETE', {'delay': 10})
-                            await asyncio.sleep(1)
-                            await page.click('.ti3-modal-footer .ti3-btn-middle')
-                            await asyncio.sleep(1)
+                                await page.type('.modal-confirm-text input[type="text"]', 'DELETE', {'delay': 10})
+                                await asyncio.sleep(0.5)
+                                await page.click('.ti3-modal-footer .ti3-btn-middle')
+                                await asyncio.sleep(1)
 
-                            buttons = await page.querySelectorAll('.ti3-modal-footer [type="button"]')
-                            if buttons and len(buttons):
-                                await buttons[1].click()
-                                await asyncio.sleep(2)
+                                buttons = await page.querySelectorAll('.ti3-modal-footer [type="button"]')
+                                if buttons and len(buttons):
+                                    await buttons[1].click()
+                                    await asyncio.sleep(2)
 
-                        except Exception as e:
-                            self.logger.debug(e)
-                            await asyncio.sleep(1)
+                            except Exception as e:
+                                self.logger.error(e)
+                            break
+                    elements = await page.querySelectorAll('a.ti3-action-menu-item')
 
-                await asyncio.sleep(1)
         finally:
             await page.close()
             await asyncio.sleep(1)
@@ -777,7 +770,6 @@ class BaseHuaWei(BaseClient):
                     # await asyncio.sleep(2)
                     await page.type('.projectInput', item['name'])
                     await asyncio.sleep(0.5)
-                    self.logger.info(item['name'])
                     await page.click('.dialog-footer .devui-btn-primary')
                     await asyncio.sleep(2)
                 except Exception as e:
@@ -786,7 +778,6 @@ class BaseHuaWei(BaseClient):
             self.logger.error(e)
         finally:
             await page.close()
-            await self.send_photo(page, 'delete_project')
 
     async def delete_api(self):
         page = await self.browser.newPage()
@@ -844,6 +835,7 @@ class BaseHuaWei(BaseClient):
             self.logger.debug(e)
         finally:
             await page.close()
+            page = None
 
     async def _close_test(self):
         try:

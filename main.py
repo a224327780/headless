@@ -19,7 +19,7 @@ def script_main(params):
             try:
                 loop.run_until_complete(func(**params))
             except Exception as e:
-                logging.warning(e)
+                logging.exception(e)
             break
 
 
