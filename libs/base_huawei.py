@@ -314,7 +314,6 @@ class BaseHuaWei(BaseClient):
 
     async def push_code_task(self):
         if not self.git:
-            self.logger.info(f'{self.username} get git url')
             page = await self.browser.newPage()
             await page.goto(f'{self.domain}/codehub/home', {'waitUntil': 'load'})
             await asyncio.sleep(5)
@@ -553,7 +552,6 @@ class BaseHuaWei(BaseClient):
             await page.click('.selfcodehubhead-right-item .devui-dropdown')
             await asyncio.sleep(1)
             git_url = await page.Jeval('.clone-url .url', "el => el.getAttribute('title')")
-            self.logger.info(git_url)
             _user = self.parent_user if self.parent_user else self.username
             git_url = git_url.replace('git@', f'https://{_user}%2F{self.username}:{self.password}@')
             return git_url.replace('com:', 'com/')

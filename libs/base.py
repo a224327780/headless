@@ -65,6 +65,8 @@ class BaseClient:
             await self.handler(**kwargs)
         except Exception as e:
             self.logger.exception(e)
+        finally:
+            self.git = None
 
     async def init(self, **kwargs):
         # launcher.DEFAULT_ARGS.remove('--enable-automation')
