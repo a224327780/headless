@@ -314,6 +314,7 @@ class BaseHuaWei(BaseClient):
 
     async def push_code_task(self):
         if not self.git:
+            self.logger.info(f'{self.username} get git url')
             page = await self.browser.newPage()
             await page.goto(f'{self.domain}/codehub/home', {'waitUntil': 'load'})
             await asyncio.sleep(5)
