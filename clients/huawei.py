@@ -9,6 +9,10 @@ class HuaWei(BaseHuaWei):
     def __init__(self):
         super().__init__()
 
+    async def p(self, s):
+        print(s)
+        await asyncio.sleep(1)
+
     async def handler(self, **kwargs):
         self.cancel = False
 
@@ -16,7 +20,9 @@ class HuaWei(BaseHuaWei):
         if kwargs.get('iam'):
             await self.iam_login(self.username, self.password, kwargs.get('parent'))
         else:
+            await self.p(1)
             await self.login(self.username, self.password)
+            await self.p(4)
 
         url = self.page.url
         if 'login' in url:
@@ -43,19 +49,24 @@ class HuaWei(BaseHuaWei):
             self.logger.warning(f'{callback} {t}')
 
     async def login(self, username, password):
-        await self.page.waitForSelector('input[name="userAccount"]')
-        await asyncio.sleep(1)
-        await self.page.type('input[name="userAccount"]', username, {'delay': 10})
         await asyncio.sleep(3)
-        items = await self.page.querySelectorAll('.hwid-list-row-active')
-        if items and len(items):
-            await items[0].click()
-            await asyncio.sleep(1)
+        await self.page.waitForSelector('#originalLoginDiv')
+        await self.page.click('#originalLoginDiv')
+        await asyncio.sleep(5)
+        # await self.page.waitForSelector('input[name="userAccount"]')
+        await self.page.waitForSelector('#personalAccountInputId input')
+        await self.page.type('#personalAccountInputId input', username, {'delay': 10})
+        await asyncio.sleep(1)
+        # await asyncio.sleep(3)
+        # items = await self.page.querySelectorAll('.hwid-list-row-active')
+        # if items and len(items):
+        #     await items[0].click()
+        #     await asyncio.sleep(1)
 
-        await self.page.type('.hwid-input-pwd', password, {'delay': 10})
+        await self.page.type('#personalPasswordInputId input', password, {'delay': 10})
         await asyncio.sleep(2)
 
-        await self.page.click('.normalBtn')
+        await self.page.click('#btn_submit')
         await asyncio.sleep(5)
 
     async def iam_login(self, username, password, parent):
