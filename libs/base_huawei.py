@@ -65,12 +65,13 @@ class BaseHuaWei(BaseClient):
         if type(credit) == str:
             credit = int(credit.replace('码豆', '').strip())
 
-        cookies = await self.get_cookies()
-        address_id = await self.get_address()
-        _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
-        cookies = json.dumps(cookies)
-        data = {'name': _id, 'credit': credit, 'address_id': address_id, 'cookies': cookies, 'uid': _uid}
-        requests.post(f'{self.api}/huawei/save', json=data)
+        if credit > 0:
+            cookies = await self.get_cookies()
+            address_id = await self.get_address()
+            _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
+            cookies = json.dumps(cookies)
+            data = {'name': _id, 'credit': credit, 'address_id': address_id, 'cookies': cookies, 'uid': _uid}
+            requests.post(f'{self.api}/huawei/save', json=data)
 
     async def init_region(self):
         page = await self.browser.newPage()
