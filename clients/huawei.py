@@ -33,6 +33,8 @@ class HuaWei(BaseHuaWei):
         await self.init_region()
         await self.sign_task()
 
+        await self.send_photo(self.page, 'sign')
+
         if await self.new_project():
             await self.start()
 

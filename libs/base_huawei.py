@@ -57,8 +57,6 @@ class BaseHuaWei(BaseClient):
         self.domain = 'https://devcloud.huaweicloud.com'
 
     async def after_run(self, **kwargs):
-        self.logger.info('after fun start')
-        
         result = await self.get_credit()
         credit = result.get('credit')
         _uid = result.get('uid')
@@ -746,6 +744,7 @@ class BaseHuaWei(BaseClient):
             projects = data['result']['project_info_list']
             return len(projects) <= 0
         except Exception as e:
+            await self.send_photo(self.page, 'check_is_new_project')
             self.logger.exception(e)
             return False
         finally:
