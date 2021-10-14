@@ -211,6 +211,7 @@ class BaseHuaWei(BaseClient):
 
             try:
                 s = await self.page.Jeval('#homeheader-coins', 'el => el.textContent')
+                self.logger.info(f'after fun {s}')
                 result['credit'] = str(s).replace('码豆', '').strip()
                 break
             except Exception as e:
