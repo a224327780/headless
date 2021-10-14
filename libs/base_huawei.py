@@ -57,6 +57,8 @@ class BaseHuaWei(BaseClient):
         self.domain = 'https://devcloud.huaweicloud.com'
 
     async def after_run(self, **kwargs):
+        self.logger.info('after fun start')
+        
         result = await self.get_credit()
         credit = result.get('credit')
         _uid = result.get('uid')
@@ -192,7 +194,6 @@ class BaseHuaWei(BaseClient):
 
     async def get_credit(self):
         result = {'credit': 0, 'uid': '', 'region': ''}
-
         async def intercept_response(response: Response):
             url = response.url
             if 'bonususer/rest/me' in url:
