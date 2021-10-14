@@ -54,40 +54,30 @@ class BaseHuaWei(BaseClient):
         self.task_page = None
         self.create_done = True
         self.cancel = False
+        self.task_page_url = 'https://devcloud.huaweicloud.com/bonususer/home/makebonus'
         self.domain = 'https://devcloud.cn-north-4.huaweicloud.com'
+        self.cookies = {}
+        self.cftk = None
+        self.user = None
+        self.projects = None
 
     async def after_run(self, **kwargs):
-        result = await self.get_credit()
-        credit = result.get('credit')
-        _uid = result.get('uid')
+        credit = await self.get_credit()
         username = self.username
         self.logger.warning(f"{username} -> {credit}\n")
+
         if type(credit) == str:
             credit = int(credit.replace('码豆', '').strip())
 
         if credit > 0:
-            cookies = await self.get_cookies()
-            address_id = await self.get_address()
             _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
             cookies = json.dumps(cookies)
-            data = {'name': _id, 'credit': credit, 'address_id': address_id, 'cookies': cookies, 'uid': _uid}
+            data = {'name': _id, 'credit': credit, 'cookies': self.cookies, 'uid': self.user['id']}
             requests.post(f'{self.api}/huawei/save', json=data)
 
-    async def init_region(self):
-        page = await self.browser.newPage()
-        try:
-            await page.goto(self.domain, {'waitUntil': 'load'})
-            await asyncio.sleep(5)
-            page_url = page.url
-            if 'auth' in page_url:
-                self.domain = 'https://devcloud.cn-north-4.huaweicloud.com'
-        finally:
-            await page.close()
-            self.logger.info(self.domain)
-
     async def start(self):
-        if self.page.url != self.url:
-            await self.page.goto(self.url, {'waitUntil': 'load'})
+        if self.page.url != self.task_page_url:
+            await self.page.goto(self.task_page_url, {'waitUntil': 'load'})
 
         id_list = ['experience-missions', 'middleware-missions']
         for _id in id_list:
@@ -188,30 +178,20 @@ class BaseHuaWei(BaseClient):
             return True
 
     async def get_credit(self):
-        result = {'credit': 0, 'uid': '', 'region': ''}
-        async def intercept_response(response: Response):
-            url = response.url
-            if 'bonususer/rest/me' in url:
-                data = json.loads(await response.text())
-                result['uid'] = data.get('id')
-
-        self.page.on('response', intercept_response)
-
         for i in range(3):
-            if self.page.url != self.url:
-                await self.page.goto(self.url, {'waitUntil': 'load'})
+            if self.page.url != self.task_page_url:
+                await self.page.goto(self.task_page_url, {'waitUntil': 'load'})
             else:
                 await self.page.reload({'waitUntil': 'load'})
 
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
 
             try:
                 s = await self.page.Jeval('#homeheader-coins', 'el => el.textContent')
-                result['credit'] = str(s).replace('码豆', '').strip()
-                break
+                return str(s).replace('码豆', '').strip()
             except Exception as e:
                 self.logger.debug(e)
-        return result
+        return None
 
     async def sign_task(self):
         try:
@@ -239,7 +219,7 @@ class BaseHuaWei(BaseClient):
         page_list = await self.browser.pages()
         if len(page_list) > 1:
             page = page_list[-1]
-            if page.url != self.url:
+            if page.url != self.task_page_url:
                 await page.close()
 
     async def api_explorer_task(self):
@@ -288,7 +268,6 @@ class BaseHuaWei(BaseClient):
         if items and len(items):
             await items[3].click()
             await asyncio.sleep(20)
-            await self.close_page()
 
     async def open_ide_task(self):
         await asyncio.sleep(5)
@@ -497,31 +476,27 @@ class BaseHuaWei(BaseClient):
         await asyncio.sleep(5)
 
     async def new_project(self):
-        if await self.check_is_new_project():
-            self.logger.info(f'create project {self.username}')
-            url = f'{self.domain}/home/projectSeries'
-            page = await self.get_new_win_page(url)
+        self.logger.info(f'create project {self.username}')
+        url = f'{self.domain}/home/projectSeries'
+        page = await self.get_new_win_page(url)
+        try:
+            await asyncio.sleep(2)
+            await page.click('#projet_phoenix')
+            await asyncio.sleep(1)
             try:
-                await asyncio.sleep(2)
-                await page.click('#projet_phoenix')
+                await page.click('.icon-close')
                 await asyncio.sleep(1)
-                try:
-                    await page.click('.icon-close')
-                    await asyncio.sleep(1)
-                except:
-                    pass
+            except:
+                pass
 
-                await page.type('#projectCreateFormProjectName', self.username)
-                await asyncio.sleep(0.5)
-                await page.click('#createProjectBtn')
-                await asyncio.sleep(3)
-                return True
-            except Exception as e:
-                self.logger.debug(e)
-                return False
-            finally:
-                await page.close()
-        return True
+            await page.type('#projectCreateFormProjectName', self.username)
+            await asyncio.sleep(0.5)
+            await page.click('#createProjectBtn')
+            await asyncio.sleep(3)
+        except Exception as e:
+            raise e
+        finally:
+            await page.close()
 
     async def week_new_git(self):
         await asyncio.sleep(5)
@@ -653,30 +628,6 @@ class BaseHuaWei(BaseClient):
 
         await asyncio.sleep(15)
 
-    async def get_address(self):
-        page = await self.browser.newPage()
-        url = f'https://devcloud.huaweicloud.com/bonususer/home/managebonus'
-
-        address_list = None
-        async def intercept_response(response: Response):
-            url = response.url
-            if 'bonususer/v2/order/queryPageList' in url:
-                data = json.loads(await response.text())
-                address_list = data['result']['result']
-        page.on('response', intercept_response)
-
-        try:
-            await page.goto(url, {'waitUntil': 'load'})
-        except Exception as e:
-            self.logger.error(e)
-        finally:
-            await asyncio.sleep(2)
-            await page.close()
-        if type(address_list) == list and len(address_list) > 0:
-            address = address_list[0]
-            return address.get('id')
-        return ''
-
     async def delete_function(self):
         page = await self.browser.newPage()
         await page.setViewport({'width': self.width, 'height': self.height})
@@ -733,42 +684,38 @@ class BaseHuaWei(BaseClient):
             await page.close()
             await asyncio.sleep(1)
 
-    async def check_is_new_project(self):
+    async def get_projects(self):
         page = await self.browser.newPage()
-        url = f'{self.domain}/home'
+        await page.setRequestInterception(True)
 
-        projects = None
-        async def intercept_response(response: Response):
-            url = response.url
-            if 'projects/v2/project' in url:
-                data = json.loads(await response.text())
-                projects = data['result']['project_info_list']
+        url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40'
 
-        page.on('response', intercept_response)
+        projects = []
+        async def intercept_request(request):
+            req.headers.update({'x-requested-with': 'XMLHttpRequest'})
+            req.headers.update({'Content-Type': 'application/json; charset=UTF-8'})
+            req.headers.update({'cftk': self.cftk})
+            await req.continue_(overrides={'headers': req.headers})
 
+        async def resp_intercept(resp: Response):
+            print(f"New header: {resp.request.headers}")
+
+        page.on('request', intercept_request)
+        # page.on('response', resp_intercept)
         try:
-            await page.goto(url, {'waitUntil': 'load'})
+            response = await page.goto(url, {'waitUntil': 'load'})
+            projects = await response.text()
+            if '<html' in projects:
+                projects = None
         except Exception as e:
             self.logger.exception(e)
-            return False
         finally:
-            await asyncio.sleep(2)
             await page.close()
-
-        if not projects:
-            return True
-        return len(projects) > 0
+            return projects
 
     async def delete_project(self):
-        page = await self.browser.newPage()
         try:
-            url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40&project_type=&archive=1'
-            res = await page.goto(url, {'waitUntil': 'load'})
-            data = await res.json()
-            if data.get('error') or not data.get('result'):
-                return
-
-            for item in data['result']['project_info_list']:
+            for item in self.projects:
                 try:
                     self.logger.warning(f"delete project {item['name']}")
                     delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
@@ -798,8 +745,7 @@ class BaseHuaWei(BaseClient):
             await page.setViewport({'width': self.width, 'height': self.height})
             await asyncio.sleep(10)
             elements = await page.querySelectorAll('#openapi_list tr')
-            if len(elements) < 2:
-                self.logger.info('no api')
+            if len(elements) <= 0:
                 return
 
             # 下线
@@ -922,3 +868,57 @@ class BaseHuaWei(BaseClient):
         # await asyncio.sleep(1)
         # await self.page.click('#fastpostsubmit')
         # await asyncio.sleep(5)
+
+    async def init_user(self):
+        page = await self.browser.newPage()
+
+        async def resp_intercept(resp: Response):
+            if 'rest/me' in resp.url:
+                self.user = json.loads(await resp.text())
+
+        page.on('response', resp_intercept)
+        try:
+            await page.goto('https://devcloud.huaweicloud.com/bonususer/home/managebonus', {'waitUntil': 'load'})
+            await asyncio.sleep(5)
+            cookies = await page.cookies()
+            for cookie in cookies:
+                name = cookie['name']
+                value = cookie['value']
+                self.cookies[name] =value
+                if 'cftk' in name:
+                    self.cftk = value
+                    value = cookie['value']
+            return True
+        except Exception as e:
+            self.logger.error(e)
+            return False
+        finally:
+            await page.close()
+
+    async def init_projects(self):
+        page = await self.browser.newPage()
+        await page.setRequestInterception(True)
+
+        url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40'
+
+        projects = []
+        async def intercept_request(req):
+            req.headers.update({'x-requested-with': 'XMLHttpRequest'})
+            req.headers.update({'Content-Type': 'application/json; charset=UTF-8'})
+            req.headers.update({'cftk': self.cftk})
+            req.headers.update({'AgencyId': self.user['id']})
+            req.headers.update({'region': ''})
+            req.headers.update({'projectname': 'cn-north-4'})
+            await req.continue_(overrides={'headers': req.headers})
+
+        page.on('request', intercept_request)
+        try:
+            response = await page.goto(url, {'waitUntil': 'load'})
+            projects = await response.text()
+            if 'project_info_list' in projects:
+                self.projects = json.loads(projects)
+                self.projects = self.projects['result']['project_info_list']
+        except Exception as e:
+            self.logger.exception(e)
+        finally:
+            await page.close()

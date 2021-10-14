@@ -18,23 +18,36 @@ class HuaWei(BaseHuaWei):
         else:
             await self.login(self.username, self.password)
 
-        await asyncio.sleep(2)
-
         url = self.page.url
         if 'auth' in url:
             self.logger.error(f'{self.username} login fail.')
             # await self.send_photo(self.page, 'login')
             return None
 
+        await self.init_user()
+        await self.init_projects()
+
         await self.sign_task()
 
-        # if await self.new_project():
-        #     await self.start()
+        # self.logger.info(self.cookies)
+        # self.logger.info(self.user)
+        self.logger.info(self.projects)
+        # self.logger.info(self.cftk)
 
-        # await self.delete_function()
-        # await self.delete_api()
-        # await self.delete_api_group()
-        # await self.delete_project()
+        n = len(self.projects)
+        self.logger.info(n)
+
+        if n <= 0:
+            await self.new_project()
+
+        await self.start()
+
+        await self.init_projects()
+
+        await self.delete_function()
+        await self.delete_api()
+        await self.delete_api_group()
+        await self.delete_project()
 
     async def async_timeout_run(self, callback):
         try:
