@@ -9,10 +9,6 @@ class HuaWei(BaseHuaWei):
     def __init__(self):
         super().__init__()
 
-    async def p(self, s):
-        print(s)
-        await asyncio.sleep(1)
-
     async def handler(self, **kwargs):
         self.cancel = False
 
@@ -20,28 +16,25 @@ class HuaWei(BaseHuaWei):
         if kwargs.get('iam'):
             await self.iam_login(self.username, self.password, kwargs.get('parent'))
         else:
-            await self.p(1)
             await self.login(self.username, self.password)
-            await self.p(4)
+
+        await asyncio.sleep(2)
 
         url = self.page.url
-        if 'login' in url:
+        if 'auth' in url:
             self.logger.error(f'{self.username} login fail.')
             # await self.send_photo(self.page, 'login')
             return None
 
-        await self.init_region()
         await self.sign_task()
 
-        await self.send_photo(self.page, 'sign')
+        # if await self.new_project():
+        #     await self.start()
 
-        if await self.new_project():
-            await self.start()
-
-        await self.delete_function()
-        await self.delete_api_group()
-        await self.delete_api()
-        await self.delete_project()
+        # await self.delete_function()
+        # await self.delete_api()
+        # await self.delete_api_group()
+        # await self.delete_project()
 
     async def async_timeout_run(self, callback):
         try:
@@ -51,20 +44,9 @@ class HuaWei(BaseHuaWei):
             self.logger.warning(f'{callback} {t}')
 
     async def login(self, username, password):
-        await asyncio.sleep(3)
-        await self.page.waitForSelector('#originalLoginDiv')
-        await self.page.click('#originalLoginDiv')
-        await asyncio.sleep(5)
-        # await self.page.waitForSelector('input[name="userAccount"]')
         await self.page.waitForSelector('#personalAccountInputId input')
         await self.page.type('#personalAccountInputId input', username, {'delay': 10})
         await asyncio.sleep(1)
-        # await asyncio.sleep(3)
-        # items = await self.page.querySelectorAll('.hwid-list-row-active')
-        # if items and len(items):
-        #     await items[0].click()
-        #     await asyncio.sleep(1)
-
         await self.page.type('#personalPasswordInputId input', password, {'delay': 10})
         await asyncio.sleep(2)
 
@@ -76,15 +58,15 @@ class HuaWei(BaseHuaWei):
 
         for i in range(4):
             try:
-                await self.page.waitForSelector('#IAMLinkDiv')
-                await asyncio.sleep(5)
-                await self.page.click('#IAMLinkDiv')
+                await self.page.waitForSelector('#subUserLogin')
+                await asyncio.sleep(2)
+                await self.page.click('#subUserLogin')
                 await asyncio.sleep(1)
-                await self.page.type('#IAMAccountInputId', self.parent_user, {'delay': 10})
+                await self.page.type('#IAMAccountInputId input', self.parent_user, {'delay': 10})
                 await asyncio.sleep(0.5)
-                await self.page.type('#IAMUsernameInputId', username, {'delay': 10})
+                await self.page.type('#IAMUsernameInputId input', username, {'delay': 10})
                 await asyncio.sleep(0.5)
-                await self.page.type('#IAMPasswordInputId', password, {'delay': 10})
+                await self.page.type('#IAMPasswordInputId input', password, {'delay': 10})
                 await self.page.click('#loginBtn')
                 await asyncio.sleep(5)
                 break
