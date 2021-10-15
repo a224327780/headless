@@ -24,10 +24,12 @@ class HuaWei(BaseHuaWei):
             # await self.send_photo(self.page, 'login')
             return None
 
+        await self.sign_task()
+        
         cookies = await self.get_cookies()
         self.logger.info(self.cookies)
         return None
-        
+
         await self.init_user()
 
         await asyncio.sleep(2)
@@ -38,8 +40,7 @@ class HuaWei(BaseHuaWei):
 
         await self.init_projects()
 
-        await self.sign_task()
-
+    
         self.logger.info(self.user)
         self.logger.info(self.projects)
         # self.logger.info(self.cftk)
