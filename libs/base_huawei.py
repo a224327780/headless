@@ -71,8 +71,9 @@ class BaseHuaWei(BaseClient):
 
         if credit > 0:
             _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
-            cookies = json.dumps(cookies)
-            data = {'name': _id, 'credit': credit, 'cookies': self.cookies, 'uid': self.user['id']}
+            cookies = '' if not self.cookies else json.dumps(self.cookies)
+            uid = self.user['id'] if self.user else ''
+            data = {'name': _id, 'credit': credit, 'cookies': cookies, 'uid': uid}
             requests.post(f'{self.api}/huawei/save', json=data)
 
     async def start(self):
