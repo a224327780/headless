@@ -25,8 +25,12 @@ class HuaWei(BaseHuaWei):
             return None
 
         await self.init_user()
-        
+
         await asyncio.sleep(2)
+
+        if not self.user:
+            await self.send_photo(self.page, 'user')
+            return None
 
         await self.init_projects()
 
