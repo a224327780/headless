@@ -25,9 +25,9 @@ class HuaWei(BaseHuaWei):
             return None
 
         await self.sign_task()
-        
+
         cookies = await self.get_cookies()
-        self.logger.info(self.cookies)
+        self.logger.info(cookies)
         return None
 
         await self.init_user()
