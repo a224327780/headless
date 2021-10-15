@@ -55,7 +55,7 @@ class BaseClient:
             except asyncio.TimeoutError:
                 self.logger.warning(f'{username} timeout.')
             finally:
-                # await self.after_run()
+                await self.after_run()
                 await self.close()
                 await asyncio.sleep(2)
 
