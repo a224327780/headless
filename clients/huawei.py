@@ -25,12 +25,15 @@ class HuaWei(BaseHuaWei):
             return None
 
         await self.init_user()
+        
+        await asyncio.sleep(2)
+
         await self.init_projects()
 
         await self.sign_task()
 
         # self.logger.info(self.cookies)
-        # self.logger.info(self.user)
+        self.logger.info(self.user)
         self.logger.info(self.projects)
         # self.logger.info(self.cftk)
 
