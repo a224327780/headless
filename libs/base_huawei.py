@@ -759,7 +759,7 @@ class BaseHuaWei(BaseClient):
                 await page.click('.ti-modal-dialog .cti-button:nth-child(1) .cti-btn-container')
                 await asyncio.sleep(2)
             except Exception as e:
-                self.logger.warning(e)
+                self.logger.debug(e)
                 await page.click('#openapi_list tr:nth-child(1) th:nth-child(1)')
                 await asyncio.sleep(0.5)
 

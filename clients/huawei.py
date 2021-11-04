@@ -22,7 +22,7 @@ class HuaWei(BaseHuaWei):
         url = self.page.url
         if 'auth' in url:
             self.logger.error(f'{self.username} login fail.')
-            # await self.send_photo(self.page, 'login')
+            await self.send_photo(self.page, 'login')
             return None
 
         await self.sign_task()
@@ -60,7 +60,12 @@ class HuaWei(BaseHuaWei):
         await asyncio.sleep(2)
 
         await self.page.click('#btn_submit')
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
+
+        try:
+            await self.page.click('#submitBtn')
+        except Exception as e:
+            self.logger.info(e)
 
     async def iam_login(self, username, password, parent):
         self.parent_user = os.environ.get('PARENT_USER', parent)
