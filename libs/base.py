@@ -99,7 +99,8 @@ class BaseClient:
             await page.setRequestInterception(True)
             page.on('request', intercept_request)
 
-        await page.goto(url, {'waitUntil': 'load'})
+        if url is not None:
+            await page.goto(url, {'waitUntil': 'load'})
         return page
 
     async def intercept_request(self, request: Request):
@@ -163,7 +164,7 @@ class BaseClient:
         return utc_dt.astimezone(timezone(timedelta(hours=8))).strftime('%Y-%m-%d %H:%M:%S')
 
     async def send_photo(self, page, title):
-        file = f'/tmp/{int(time.time())}.png'
+        file = f'./{int(time.time())}.png'
         await page.screenshot(path=file, fullPage=True)
         files = {'file': open(file, 'rb')}
         requests.post(f'{self.api}/tg/photo', files=files,

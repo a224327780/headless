@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import os
 
 from libs.base_huawei import BaseHuaWei
@@ -25,40 +26,24 @@ class HuaWei(BaseHuaWei):
             return None
 
         await self.sign_task()
-
-        cookies = await self.get_cookies()
-        self.logger.info(cookies)
-        return None
-
         await self.init_user()
 
         await asyncio.sleep(2)
 
-        if not self.user:
-            await self.send_photo(self.page, 'user')
-            return None
+        await self.get_projects()
 
-        await self.init_projects()
-
-    
-        self.logger.info(self.user)
-        self.logger.info(self.projects)
-        # self.logger.info(self.cftk)
-
-        n = len(self.projects)
-        self.logger.info(n)
-
-        if n <= 0:
+        if len(self.projects) <= 0 and int(datetime.datetime.now().isoweekday()) != 1:
             await self.new_project()
+            await self.get_projects()
+
+        self.logger.info(self.projects)
 
         await self.start()
 
-        await self.init_projects()
-
+        await self.delete_project()
         await self.delete_function()
         await self.delete_api()
         await self.delete_api_group()
-        await self.delete_project()
 
     async def async_timeout_run(self, callback):
         try:

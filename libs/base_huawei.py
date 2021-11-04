@@ -7,12 +7,12 @@ import time
 from pathlib import Path
 
 import requests
-from pyppeteer.network_manager import Response
+from pyppeteer.network_manager import Response, Request
 
 from libs.base import BaseClient
 
 name_map = {
-    # '项目管理': [['week_new_project', 0]],
+    '项目管理': [['week_new_project', 0]],
     '代码托管': [['week_new_git', 0], ['open_code_task', 1], ['push_code_task', 2]],
     'CloudIDE': [['open_ide_task', 0]],
     '代码检查': [['week_new_code_check', 0], ['check_code_task', 1]],
@@ -23,7 +23,7 @@ name_map = {
     '接口测试': [['week_new_api_test_task', 0], ['api_test_task', 1]],
     '测试管理': [['new_test_task', 0]],
     'APIG网关': [
-        # ['new_new_api_task', 0],
+        ['new_new_api_task', 0],
         ['run_api_task', 1]],
     '函数工作流': [['new_fun_task', 0]],
     '使用API  Explorer完在线调试': 'api_explorer_task',
@@ -69,11 +69,12 @@ class BaseHuaWei(BaseClient):
         if type(credit) == str:
             credit = int(credit.replace('码豆', '').strip())
 
-        if credit > 0:
+        if credit and type(credit) == int and credit > 0:
             _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
             cookies = '' if not self.cookies else json.dumps(self.cookies)
-            uid = self.user['id'] if self.user else ''
-            data = {'name': _id, 'credit': credit, 'cookies': cookies, 'uid': uid}
+            data = {'name': _id, 'credit': credit, 'cookies': cookies}
+            if self.user and self.user.get('id'):
+                data['uid'] = self.user.get('id')
             requests.post(f'{self.api}/huawei/save', json=data)
 
     async def start(self):
@@ -171,6 +172,9 @@ class BaseHuaWei(BaseClient):
             func = getattr(self, task_fun)
             await func()
             self.logger.warning(f'{task_name} -> DONE.')
+
+            if task_fun == 'week_new_project':
+                await self.get_projects()
         except Exception as e:
             self.logger.error(e)
         finally:
@@ -192,7 +196,7 @@ class BaseHuaWei(BaseClient):
                 return str(s).replace('码豆', '').strip()
             except Exception as e:
                 self.logger.debug(e)
-        return None
+        return 0
 
     async def sign_task(self):
         try:
@@ -585,6 +589,29 @@ class BaseHuaWei(BaseClient):
         await self.task_page.click('div.footer .devui-btn-stress')
         await asyncio.sleep(3)
 
+    async def week_new_project(self):
+        await asyncio.sleep(5)
+        try:
+            notice = await self.task_page.querySelector('#declaration-notice')
+            if notice:
+                btn_list = await self.task_page.querySelectorAll('.quick-create-phoenix .devui-btn')
+                await btn_list[1].click()
+                await asyncio.sleep(1)
+                await self.task_page.click('#declaration-notice div.devui-checkbox label')
+                await asyncio.sleep(1)
+                await self.task_page.click('#declaration-notice .devui-btn.devui-btn-primary')
+                await asyncio.sleep(1)
+        except Exception as e:
+            self.logger.debug(e)
+
+        try:
+            btn_list = await self.task_page.querySelectorAll('.quick-create-phoenix .devui-btn')
+            await btn_list[0].click()
+            await asyncio.sleep(2)
+        except Exception as e:
+            await self.send_photo(self.task_page, 'week_new_project')
+            raise e
+
     async def new_new_api_task(self):
         await asyncio.sleep(15)
         self.logger.debug(self.task_page.url)
@@ -686,41 +713,13 @@ class BaseHuaWei(BaseClient):
             await page.close()
             await asyncio.sleep(1)
 
-    async def get_projects(self):
-        page = await self.browser.newPage()
-        await page.setRequestInterception(True)
-
-        url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40'
-
-        projects = []
-        async def intercept_request(request):
-            req.headers.update({'x-requested-with': 'XMLHttpRequest'})
-            req.headers.update({'Content-Type': 'application/json; charset=UTF-8'})
-            req.headers.update({'cftk': self.cftk})
-            await req.continue_(overrides={'headers': req.headers})
-
-        async def resp_intercept(resp: Response):
-            print(f"New header: {resp.request.headers}")
-
-        page.on('request', intercept_request)
-        # page.on('response', resp_intercept)
-        try:
-            response = await page.goto(url, {'waitUntil': 'load'})
-            projects = await response.text()
-            if '<html' in projects:
-                projects = None
-        except Exception as e:
-            self.logger.exception(e)
-        finally:
-            await page.close()
-            return projects
-
     async def delete_project(self):
+        page = await self.get_new_win_page(None)
         try:
             for item in self.projects:
+                self.logger.warning(f"delete project {item['name']}")
+                delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
                 try:
-                    self.logger.warning(f"delete project {item['name']}")
-                    delete_url = f"{self.domain}/projects/project/{item['project_id']}/config/info"
                     await page.goto(delete_url, {'waitUntil': 'load'})
                     await asyncio.sleep(2)
                     btn_list = await page.querySelectorAll('.margin-right-s .devui-btn-common')
@@ -745,18 +744,24 @@ class BaseHuaWei(BaseClient):
             await page.goto('https://console.huaweicloud.com/apig/?region=cn-north-4#/apig/multiLogical/openapi/list',
                             {'waitUntil': 'load'})
             await page.setViewport({'width': self.width, 'height': self.height})
-            await asyncio.sleep(10)
+            await asyncio.sleep(5)
             elements = await page.querySelectorAll('#openapi_list tr')
             if len(elements) <= 0:
                 return
 
-            # 下线
             await page.click('#openapi_list tr:nth-child(1) th:nth-child(1)')
             await asyncio.sleep(0.5)
-            await page.click('.apiList-groups .cti-button:nth-child(3) .cti-btn-container')
-            await asyncio.sleep(1)
-            await page.click('.ti-modal-dialog .cti-button:nth-child(1) .cti-btn-container')
-            await asyncio.sleep(2)
+
+            # 下线
+            try:
+                await page.click('.apiList-groups .cti-button:nth-child(3) .cti-btn-container')
+                await asyncio.sleep(1)
+                await page.click('.ti-modal-dialog .cti-button:nth-child(1) .cti-btn-container')
+                await asyncio.sleep(2)
+            except Exception as e:
+                self.logger.warning(e)
+                await page.click('#openapi_list tr:nth-child(1) th:nth-child(1)')
+                await asyncio.sleep(0.5)
 
             # 删除
             await page.click('#openapi_list tr:nth-child(1) th:nth-child(1)')
@@ -795,7 +800,6 @@ class BaseHuaWei(BaseClient):
             self.logger.debug(e)
         finally:
             await page.close()
-            page = None
 
     async def _close_test(self):
         try:
@@ -874,11 +878,21 @@ class BaseHuaWei(BaseClient):
     async def init_user(self):
         page = await self.browser.newPage()
 
-        async def resp_intercept(resp: Response):
+        # await page.setRequestInterception(True)
+
+        async def response_intercept(resp: Response):
             if 'rest/me' in resp.url:
                 self.user = json.loads(await resp.text())
 
-        page.on('response', resp_intercept)
+        async def request_intercept(request: Request):
+            url = request.url
+            if 'rest/me' in url or 'home/managebonus' in url:
+                await request.continue_()
+            else:
+                await request.abort()
+
+        page.on('response', response_intercept)
+        # page.on('request', request_intercept)
         try:
             await page.goto('https://devcloud.huaweicloud.com/bonususer/home/managebonus', {'waitUntil': 'load'})
             await asyncio.sleep(5)
@@ -886,10 +900,9 @@ class BaseHuaWei(BaseClient):
             for cookie in cookies:
                 name = cookie['name']
                 value = cookie['value']
-                self.cookies[name] =value
+                self.cookies[name] = value
                 if 'cftk' in name:
                     self.cftk = value
-                    value = cookie['value']
             return True
         except Exception as e:
             self.logger.error(e)
@@ -897,13 +910,12 @@ class BaseHuaWei(BaseClient):
         finally:
             await page.close()
 
-    async def init_projects(self):
+    async def init_projects1(self):
         page = await self.browser.newPage()
         await page.setRequestInterception(True)
 
         url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40'
 
-        projects = []
         async def intercept_request(req):
             req.headers.update({'x-requested-with': 'XMLHttpRequest'})
             req.headers.update({'Content-Type': 'application/json; charset=UTF-8'})
@@ -922,5 +934,23 @@ class BaseHuaWei(BaseClient):
                 self.projects = self.projects['result']['project_info_list']
         except Exception as e:
             self.logger.exception(e)
+        finally:
+            await page.close()
+
+    async def get_projects(self):
+        page = await self.get_new_win_page(f'{self.domain}/home')
+        try:
+            await asyncio.sleep(5)
+            await page.waitForSelector('.projects-container', {'visible': True})
+            items = await page.querySelectorAll('.projects-container .projects-board-in-home a.card')
+            self.projects = []
+            if items and len(items) > 0:
+                for item in items:
+                    href = await page.evaluate('item => item.href', item)
+                    name = await item.Jeval('div.name', 'e => e.textContent')
+                    project_id = str(href).split('/')[-2]
+                    self.projects.append({'name': name, 'project_id': project_id})
+        except Exception as e:
+            self.logger.error(e)
         finally:
             await page.close()
