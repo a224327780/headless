@@ -66,7 +66,7 @@ class BaseHuaWei(BaseClient):
         username = self.username
         self.logger.warning(f"{username} -> {credit}\n")
 
-        if type(credit) == str:
+        if credit and type(credit) == str:
             credit = int(credit.replace('码豆', '').strip())
 
         if credit and type(credit) == int and credit > 0:
@@ -170,7 +170,8 @@ class BaseHuaWei(BaseClient):
 
         try:
             func = getattr(self, task_fun)
-            await func()
+            # await func()
+            await asyncio.wait_for(func(), timeout=100.0)
             self.logger.warning(f'{task_name} -> DONE.')
 
             if task_fun == 'week_new_project':
