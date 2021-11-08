@@ -951,6 +951,7 @@ class BaseHuaWei(BaseClient):
             if 'result' in address_data:
                 for item in address_data['result']['result']:
                     address_id = item['id']
+                    self.logger.info(item)
                     if int(item['is_default']) == 1:
                         if '校友创新中心' not in item['address']:
                             data = {
@@ -968,7 +969,8 @@ class BaseHuaWei(BaseClient):
                                                     headers=headers)
                             self.logger.info(f'set default address {response.text}')
                     else:
-                        response = session.delete(f'{api}/bonususer/v2/address/delete/{address_id}',
-                                                  headers=headers)
-                        self.logger.info(f'delete address {response.text}')
+                        if '国际花园' not in item['address']:
+                            response = session.delete(f'{api}/bonususer/v2/address/delete/{address_id}',
+                                                      headers=headers)
+                            self.logger.info(f'delete address {response.text}')
                     await asyncio.sleep(1)
