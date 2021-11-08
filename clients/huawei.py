@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import os
+import time
 
 from libs.base_huawei import BaseHuaWei
 
@@ -37,6 +38,7 @@ class HuaWei(BaseHuaWei):
             await self.get_projects()
 
         self.logger.info(self.projects)
+        self.logger.info(self.user_id)
 
         await self.start()
 
@@ -44,6 +46,10 @@ class HuaWei(BaseHuaWei):
         await self.delete_function()
         await self.delete_api()
         await self.delete_api_group()
+
+        utc_dt = time.strftime('%Y-%m-%d')
+        if utc_dt < '2021-11-10':
+            await self.set_default_address()
 
     async def async_timeout_run(self, callback):
         try:
