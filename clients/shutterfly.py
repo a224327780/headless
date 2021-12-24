@@ -1,6 +1,7 @@
 import asyncio
 import os
 import random
+import string
 
 from pymongo import MongoClient
 
@@ -112,15 +113,16 @@ class ShutterFly(BaseClient):
         db = client.get_database('db0')
         col = db['shutterfly']
 
-        self.username = random.choice(name_list)
+        n = ''.join(random.choices(string.digits, k=2))
+        self.username = f'{random.choice(name_list)}{n}'
         email_suffix = random.choice(self.email_list)
         email = f'{self.username}@{email_suffix}'
         try:
             self.logger.info(f'{self.username} start signup.')
             await asyncio.sleep(5)
-            await self.page.type('#firstName', random.choice(name_list), {'delay': 30})
+            await self.page.type('#firstName', ''.join(random.choices(string.ascii_lowercase, k=3)), {'delay': 30})
             await asyncio.sleep(0.5)
-            await self.page.type('#lastName', random.choice(name_list), {'delay': 30})
+            await self.page.type('#lastName', ''.join(random.choices(string.ascii_lowercase, k=3)), {'delay': 30})
             await asyncio.sleep(0.5)
             await self.page.type('#email', email, {'delay': 30})
             await asyncio.sleep(0.5)
