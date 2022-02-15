@@ -55,6 +55,7 @@ class BaseHuaWei(BaseClient):
         self.create_done = True
         self.cancel = False
         self.task_page_url = 'https://devcloud.huaweicloud.com/bonususer/home/makebonus'
+        self.sign_url = 'https://devcloud.huaweicloud.com/bonususer/home/converge'
         self.domain = 'https://devcloud.cn-north-4.huaweicloud.com'
         self.cookies = None
         self.cftk = None
@@ -185,15 +186,15 @@ class BaseHuaWei(BaseClient):
 
     async def get_credit(self):
         for i in range(3):
-            if self.page.url != self.task_page_url:
-                await self.page.goto(self.task_page_url, {'waitUntil': 'load'})
+            if self.page.url != self.sign_url:
+                await self.page.goto(self.sign_url, {'waitUntil': 'load'})
             else:
                 await self.page.reload({'waitUntil': 'load'})
 
             await asyncio.sleep(3)
-
+            await self.close_modal()
             try:
-                s = await self.page.Jeval('#homeheader-coins', 'el => el.textContent')
+                s = await self.page.Jeval('#homeheader-coins .bonus-count', 'el => el.textContent')
                 return str(s).replace('码豆', '').strip()
             except Exception as e:
                 self.logger.debug(e)
@@ -201,11 +202,10 @@ class BaseHuaWei(BaseClient):
 
     async def sign_task(self):
         try:
-            await self.page.goto(self.task_page_url, {'waitUntil': 'load'})
+            await self.page.goto(self.sign_url, {'waitUntil': 'load'})
             await asyncio.sleep(5)
-            info = await self.page.Jeval(
-                '#homeheader-signin span.button-content, #homeheader-signined  span.button-content',
-                'el => el.textContent')
+            await self.close_modal()
+            info = await self.page.Jeval('#homeheader-signin','el => el.textContent')
             sign_txt = str(info).strip()
             self.logger.info(sign_txt)
             if sign_txt.find('已签到') == -1:
@@ -213,6 +213,13 @@ class BaseHuaWei(BaseClient):
                 await asyncio.sleep(3)
         except Exception as e:
             self.logger.warning(e)
+
+    async def close_modal(self):
+        try:
+            await self.page.click('#rule-dialog .close-btn')
+            await asyncio.sleep(1)
+        except Exception as e:
+            self.logger.debug(e)
 
     async def get_new_page(self):
         await asyncio.sleep(2)
@@ -895,8 +902,9 @@ class BaseHuaWei(BaseClient):
         # page.on('response', response_intercept)
         # page.on('request', request_intercept)
         try:
-            await page.goto('https://devcloud.huaweicloud.com/bonususer/home/managebonus', {'waitUntil': 'load'})
+            await page.goto(self.sign_url, {'waitUntil': 'load'})
             await asyncio.sleep(5)
+            await self.close_modal()
             cookies = await page.cookies()
             self.cookies = {}
             for cookie in cookies:

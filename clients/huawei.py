@@ -33,23 +33,20 @@ class HuaWei(BaseHuaWei):
 
         await self.get_projects()
 
-        if len(self.projects) <= 0 and int(datetime.datetime.now().isoweekday()) != 1:
-            await self.new_project()
-            await self.get_projects()
+        # if len(self.projects) <= 0 and int(datetime.datetime.now().isoweekday()) != 1:
+        #     await self.new_project()
+        #     await self.get_projects()
 
         self.logger.info(self.projects)
         self.logger.info(self.user_id)
 
-        await self.start()
+        # await self.start()
 
         await self.delete_project()
         await self.delete_function()
         await self.delete_api()
         await self.delete_api_group()
 
-        utc_dt = time.strftime('%Y-%m-%d')
-        if utc_dt < '2021-11-10':
-            await self.set_default_address()
 
     async def async_timeout_run(self, callback):
         try:
