@@ -19,7 +19,8 @@ class IpInfo(BaseHeadless):
         await self.page.type('input[name="password"]', password, {'delay': 30})
 
         await self.page.click('button[type="submit"]')
-        await asyncio.sleep(15)
+        self.logger.info(f'[{username}] submit.')
+        await asyncio.sleep(10)
 
         if 'confirm' in self.page.url:
             self.logger.info(f'[{username}] register done.')
