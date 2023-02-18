@@ -2,7 +2,7 @@ name: main
 
 on:
   push:
-    branches: [ master ]
+    branches: [ dev ]
     paths-ignore:
       - '.github/workflows/main.yml'
 
