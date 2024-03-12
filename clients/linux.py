@@ -1,5 +1,6 @@
 import asyncio
 import random
+import aiofiles
 
 from libs.base import BaseHeadless
 
@@ -8,6 +9,7 @@ class LinuxDo(BaseHeadless):
     base_url = 'https://linux.do/'
     width = 1920
     link_map = {}
+    history_file = 'linux_do.txt'
 
     async def run(self, **kwargs):
         await self.init(self.base_url, headless=kwargs.get('headless'))
@@ -19,18 +21,20 @@ class LinuxDo(BaseHeadless):
                 self.link_map[link] = name
                 self.logger.info(f'{link}\t{name}')
                 await self.do_views(link)
-            await asyncio.sleep(1800)
-
+                async with aiofiles.open(self.history_file, 'a') as f:
+                    await f.write(f'{link}\n')
+            self.logger.info('Wait 600 seconds')
+            await asyncio.sleep(600)
 
     async def do_views(self, url):
         view_page = await self.new_page()
         try:
             await view_page.goto(url, {'waitUntil': 'load'})
             await asyncio.sleep(5)
-            num = random.randint(3, 10)
+            num = random.randint(2, 10)
             for _ in range(num):
                 await view_page.evaluate('''() =>{ window.scrollBy(0, 100); }''')
-                n = random.randint(1, 15)
+                n = random.randint(1, 20)
                 await asyncio.sleep(0.5 * n)
         except Exception as e:
             self.logger.error(e)
@@ -54,8 +58,8 @@ class LinuxDo(BaseHeadless):
     async def login(self, **kwargs):
         await asyncio.sleep(2)
 
-        username = 'atcaoyufei@gmail.com'
-        password = 'tAbM!q9bD8kakTUv'
+        username = kwargs.get('username')
+        password = kwargs.get('password')
 
         await asyncio.sleep(4)
 
