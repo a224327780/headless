@@ -1,6 +1,5 @@
 import asyncio
 import random
-import aiofiles
 
 from libs.base import BaseHeadless
 
@@ -9,7 +8,6 @@ class LinuxDo(BaseHeadless):
     base_url = 'https://linux.do/'
     width = 1920
     link_map = {}
-    history_file = 'linux_do.txt'
 
     async def run(self, **kwargs):
         await self.init(self.base_url, headless=kwargs.get('headless'))
@@ -21,10 +19,8 @@ class LinuxDo(BaseHeadless):
                 self.link_map[link] = name
                 self.logger.info(f'{link}\t{name}')
                 await self.do_views(link)
-                async with aiofiles.open(self.history_file, 'a') as f:
-                    await f.write(f'{link}\n')
-            self.logger.info('Wait 600 seconds')
-            await asyncio.sleep(600)
+            self.logger.info('Wait 300 seconds')
+            await asyncio.sleep(300)
 
     async def do_views(self, url):
         view_page = await self.new_page()
@@ -70,3 +66,7 @@ class LinuxDo(BaseHeadless):
         await self.page.type('input[type="password"]', password, {'delay': 30})
         await self.page.click('#login-button')
         await asyncio.sleep(4)
+
+        html = await self.page.content()
+        if '的账户' in html:
+            self.logger.info(f'{username} login success.')

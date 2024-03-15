@@ -1,7 +1,7 @@
 trigger: none
 
 schedules:
-- cron: "0 0-4,6 * * *"
+- cron: "0 */1 * * *"
   displayName: Daily midnight build
   branches:
     include:
@@ -9,7 +9,7 @@ schedules:
   always: "true"
 
 variables:
-- group: serverless
+- group: headless
 
 jobs:
 
@@ -28,5 +28,5 @@ jobs:
     displayName: 'Install requirements'
 
   - script: |
-      python3 main.py --client linux
+      python3 main.py --client linux--username $USERNAME_LINUX_DO --password $PASSWORD_LINUX_DO
     displayName: 'Run'
