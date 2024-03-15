@@ -2,13 +2,14 @@ name: main
 
 on:
   push:
-    branches: [ master ]
+    branches: [ dev ]
     paths-ignore:
       - '.github/workflows/main.yml'
 
 jobs:
   Run:
     runs-on: ubuntu-latest
+    timeout-minutes: 50
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
