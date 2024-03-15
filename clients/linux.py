@@ -43,6 +43,7 @@ class LinuxDo(BaseHeadless):
             await asyncio.sleep(5)
 
             items = await self.page.querySelectorAll('table.topic-list a.raw-link')
+            self.logger.info(f'url count: {len(items)}')
             if items and len(items) > 0:
                 for item in items:
                     name = await self.page.evaluate('el => el.textContent', item)
@@ -65,8 +66,10 @@ class LinuxDo(BaseHeadless):
         await self.page.type('input[type="email"]', username, {'delay': 30})
         await self.page.type('input[type="password"]', password, {'delay': 30})
         await self.page.click('#login-button')
-        await asyncio.sleep(4)
+        await asyncio.sleep(6)
 
         html = await self.page.content()
         if '的账户' in html:
             self.logger.info(f'{username} login success.')
+        else:
+            self.logger.warning(html)

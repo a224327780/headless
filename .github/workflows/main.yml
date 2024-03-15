@@ -2,7 +2,7 @@ name: main
 
 on:
   push:
-    branches: [ dev ]
+    branches: [ master ]
     paths-ignore:
       - '.github/workflows/main.yml'
 
@@ -19,4 +19,4 @@ jobs:
       run: pip3 install -r requirements.txt
 
     - name: Run
-      run: python3 main.py --client linux--username $USERNAME_LINUX_DO --password $PASSWORD_LINUX_DO
+      run: python3 main.py --client linux --username ${{ secrets.USERNAME_LINUX_DO }} --password ${{ secrets.PASSWORD_LINUX_DO }}
