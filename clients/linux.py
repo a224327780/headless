@@ -71,5 +71,7 @@ class LinuxDo(BaseHeadless):
         html = await self.page.content()
         if '的账户' in html:
             self.logger.info(f'{username} login success.')
+        elif '用户名、电子邮件或密码不正确' in html:
+            self.logger.error('用户名、电子邮件或密码不正确')
         else:
             self.logger.warning(html)
