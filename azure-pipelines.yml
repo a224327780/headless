@@ -28,5 +28,5 @@ jobs:
     displayName: 'Install requirements'
 
   - script: |
-      python3 main.py --client linux--username $USERNAME_LINUX_DO --password $PASSWORD_LINUX_DO
+      python3 main.py --client linux --username '$USERNAME_LINUX_DO' --password '$PASSWORD_LINUX_DO'
     displayName: 'Run'
