@@ -8,7 +8,7 @@ DEFAULT_FORMATTER = '%(asctime)s[%(filename)s:%(lineno)d][%(levelname)s]:%(messa
 logging.basicConfig(format=DEFAULT_FORMATTER, level=logging.INFO)
 
 
-async def run(obj, **kwargs):
+async def run_main(obj, **kwargs):
     try:
         await obj.run(**kwargs)
     except Exception as e:
@@ -26,8 +26,7 @@ def script_main(params):
     module = import_module('.'.join(['clients', _client]))
     for name, client in inspect.getmembers(module):
         if inspect.isclass(client) and str(client).find('clients') != -1:
-            loop = asyncio.get_event_loop()
-            return loop.run_until_complete(run(client(), **params))
+            return asyncio.run(run_main(client(), **params), debug=False)
 
 
 def main():

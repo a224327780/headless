@@ -30,7 +30,7 @@ class LinuxDo(BaseHeadless):
             num = random.randint(2, 10)
             for _ in range(num):
                 await view_page.evaluate('''() =>{ window.scrollBy(0, 100); }''')
-                n = random.randint(1, 20)
+                n = random.randint(1, 10)
                 await asyncio.sleep(0.5 * n)
         except Exception as e:
             self.logger.error(e)
